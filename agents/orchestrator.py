@@ -46,7 +46,9 @@ class Orchestrator:
 
         self.acquisition_agent = AcquisitionAgent(api_key=api_key, model=model)
         self.publication_agent = PublicationAgent(api_key=api_key, model=model)
-        self.crm_chatbot_agent = CRMChatbotAgent(api_key=api_key, model=model, checkpointer=checkpointer)
+        self.crm_chatbot_agent = CRMChatbotAgent(
+            api_key=api_key, model=model, checkpointer=checkpointer
+        )
         self.sales_closing_agent = SalesClosingAgent(api_key=api_key, model=model)
 
         self._checkpointer_override = checkpointer
@@ -65,7 +67,9 @@ class Orchestrator:
     async def run_acquisition(
         self, car_data: dict[str, Any], inspection_data: dict[str, Any] | None = None
     ) -> CarSaleState:
-        self.console.print(f"[yellow]{self._ts()}[/yellow] Pipeline: adquisición → publicación")
+        self.console.print(
+            f"[yellow]{self._ts()}[/yellow] Pipeline: adquisición → publicación"
+        )
         initial = CarSaleState(
             car_data=dict(car_data),
             inspection_data=dict(inspection_data) if inspection_data else {},
@@ -82,7 +86,9 @@ class Orchestrator:
 
         state = CarSaleState.model_validate(result)
         color = "green" if state.status != "rejected" else "red"
-        self.console.print(f"[{color}]{self._ts()}[/{color}] Pipeline terminado: {state.status}")
+        self.console.print(
+            f"[{color}]{self._ts()}[/{color}] Pipeline terminado: {state.status}"
+        )
         return state
 
     async def run_crm(self, message: str, state: CarSaleState) -> dict[str, Any]:
@@ -101,7 +107,9 @@ class Orchestrator:
         final_offer: float,
     ) -> dict[str, Any]:
         started = datetime.now(timezone.utc)
-        state = await self.run_acquisition(car_data=car_data, inspection_data=inspection_data)
+        state = await self.run_acquisition(
+            car_data=car_data, inspection_data=inspection_data
+        )
 
         if state.status == "rejected":
             total = (datetime.now(timezone.utc) - started).total_seconds()
@@ -112,7 +120,9 @@ class Orchestrator:
         for msg in client_messages:
             reply = await self.run_crm(message=msg, state=state)
             if reply.get("lead_calificado"):
-                self.console.print(f"[green]{self._ts()}[/green] Lead calificado: listo para cierre")
+                self.console.print(
+                    f"[green]{self._ts()}[/green] Lead calificado: listo para cierre"
+                )
                 break
 
         closing = await self.run_closing(offer=final_offer, state=state)

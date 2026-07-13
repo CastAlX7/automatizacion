@@ -53,7 +53,7 @@ async def _new_stealth_context(p):
     """Creates a Playwright browser + context with anti-detection settings."""
     browser = await p.chromium.launch(headless=True, args=_LAUNCH_ARGS)
     w = 1280 + random.randint(-60, 60)
-    h = 900  + random.randint(-40, 40)
+    h = 900 + random.randint(-40, 40)
     context = await browser.new_context(
         user_agent=random.choice(_USER_AGENTS),
         viewport={"width": w, "height": h},
@@ -67,16 +67,30 @@ async def _new_stealth_context(p):
     await context.add_init_script(_STEALTH_SCRIPT)
     return browser, context
 
+
 # ─── Currency detection ────────────────────────────────────────────────────────
-EXCHANGE_RATE_PEN_USD = 3.75   # S/ per $1 USD (approximate, Lima 2024-2025)
+EXCHANGE_RATE_PEN_USD = 3.75  # S/ per $1 USD (approximate, Lima 2024-2025)
 
 _USD_KEYWORDS = [
-    "dólares", "dolares", "usd", "en dólares", "en dolares",
-    "precio en dólares", "precio en dolares", "us$", "precio usd",
-    "pagos en dólares", "venta en dólares", "cobro en dólares",
+    "dólares",
+    "dolares",
+    "usd",
+    "en dólares",
+    "en dolares",
+    "precio en dólares",
+    "precio en dolares",
+    "us$",
+    "precio usd",
+    "pagos en dólares",
+    "venta en dólares",
+    "cobro en dólares",
 ]
 _PEN_KEYWORDS = [
-    "soles", "nuevos soles", "en soles", "precio en soles", "s/.",
+    "soles",
+    "nuevos soles",
+    "en soles",
+    "precio en soles",
+    "s/.",
     "precio soles",
 ]
 
@@ -85,15 +99,15 @@ _PEN_KEYWORDS = [
 # lat/lon parameters are silently ignored by Facebook — do NOT use coordinates.
 # Slugs are the exact strings Facebook uses in marketplace/<slug>/vehicles.
 PERU_CITIES: dict[str, dict[str, Any]] = {
-    "lima":     {"slug": "lima",     "label": "Lima"},
+    "lima": {"slug": "lima", "label": "Lima"},
     "arequipa": {"slug": "arequipa", "label": "Arequipa"},
     "trujillo": {"slug": "trujillo", "label": "Trujillo"},
     "chiclayo": {"slug": "chiclayo", "label": "Chiclayo"},
-    "piura":    {"slug": "piura",    "label": "Piura"},
-    "cusco":    {"slug": "cusco",    "label": "Cusco"},
-    "iquitos":  {"slug": "iquitos",  "label": "Iquitos"},
+    "piura": {"slug": "piura", "label": "Piura"},
+    "cusco": {"slug": "cusco", "label": "Cusco"},
+    "iquitos": {"slug": "iquitos", "label": "Iquitos"},
     "huancayo": {"slug": "huancayo", "label": "Huancayo"},
-    "tacna":    {"slug": "tacna",    "label": "Tacna"},
+    "tacna": {"slug": "tacna", "label": "Tacna"},
     "pucallpa": {"slug": "pucallpa", "label": "Pucallpa"},
 }
 
@@ -109,14 +123,29 @@ _NON_PERU_SIGNALS = [
     r"\bsmog\s*(check|test)\b",
     r"\bregistration\s*(expires?|valid)\b",
     r"\bstate\s*inspection\b",
-    r"\b\d[\d,\.]*k?\s+miles?\b",   # "85k miles", "85,000 miles" — not "miles de km"
+    r"\b\d[\d,\.]*k?\s+miles?\b",  # "85k miles", "85,000 miles" — not "miles de km"
     # US states / cities
-    r"\btexas\b", r"\bflorida\b", r"\bcalifornia\b", r"\bgeorgia\b",
-    r"\bcarolina\b", r"\bvirgin[ai]a\b", r"\btenness?ee\b",
-    r"\bariz?ona\b", r"\bnevada\b", r"\butah\b", r"\bcolorado\b",
-    r"\bwashington\s*(state|dc)\b", r"\bhouston\b", r"\bdallas\b",
-    r"\batlanta\b", r"\bmiami\b", r"\bchicago\b", r"\bphoenix\b",
-    r"\blos\s+angeles\b", r"\bsan\s+diego\b", r"\bsan\s+antonio\b",
+    r"\btexas\b",
+    r"\bflorida\b",
+    r"\bcalifornia\b",
+    r"\bgeorgia\b",
+    r"\bcarolina\b",
+    r"\bvirgin[ai]a\b",
+    r"\btenness?ee\b",
+    r"\bariz?ona\b",
+    r"\bnevada\b",
+    r"\butah\b",
+    r"\bcolorado\b",
+    r"\bwashington\s*(state|dc)\b",
+    r"\bhouston\b",
+    r"\bdallas\b",
+    r"\batlanta\b",
+    r"\bmiami\b",
+    r"\bchicago\b",
+    r"\bphoenix\b",
+    r"\blos\s+angeles\b",
+    r"\bsan\s+diego\b",
+    r"\bsan\s+antonio\b",
 ]
 
 # English-only car phrases: appear in US listings but never in Peruvian ones
@@ -155,7 +184,7 @@ _PERU_SIGNALS = [
 
 # Spanish language markers: words/phrases that appear in Spanish but not English
 _SPANISH_MARKERS = [
-    r"\bvend[eo]\b",           # vendo, vende
+    r"\bvend[eo]\b",  # vendo, vende
     r"\bnegociable\b",
     r"\bkilometraje\b",
     r"\bautomátic[ao]\b",
@@ -172,7 +201,9 @@ _SPANISH_MARKERS = [
 ]
 
 
-def is_peru_listing(title: str, description: str, condition: str = "") -> tuple[bool, str]:
+def is_peru_listing(
+    title: str, description: str, condition: str = ""
+) -> tuple[bool, str]:
     """
     Returns (True, reason) if listing appears to be from Peru, else (False, reason).
 
@@ -185,7 +216,7 @@ def is_peru_listing(title: str, description: str, condition: str = "") -> tuple[
       6. Default: reject (require positive evidence of Peru, not just absence of US signals)
     """
     combined_lower = f"{title} {description} {condition}".lower()
-    combined_raw   = f"{title} {description} {condition}"
+    combined_raw = f"{title} {description} {condition}"
 
     # 1. Non-Peru disqualifiers (checked first — highest precision)
     for pattern in _NON_PERU_SIGNALS:
@@ -216,7 +247,9 @@ def is_peru_listing(title: str, description: str, condition: str = "") -> tuple[
     return False, "Sin señales confirmatorias de Perú — descartado"
 
 
-def detect_currency(price_str: str, description: str = "", title: str = "") -> dict[str, Any]:
+def detect_currency(
+    price_str: str, description: str = "", title: str = ""
+) -> dict[str, Any]:
     """
     Detects whether a price is in USD or PEN (soles) and normalises it.
 
@@ -259,11 +292,11 @@ def detect_currency(price_str: str, description: str = "", title: str = "") -> d
         if "." in num_str and "," not in num_str:
             parts = num_str.split(".")
             if len(parts) >= 2 and all(len(p) == 3 for p in parts[1:]):
-                num_str = num_str.replace(".", "")   # 6.000 → 6000
+                num_str = num_str.replace(".", "")  # 6.000 → 6000
         elif "," in num_str and "." not in num_str:
             parts = num_str.split(",")
             if len(parts) >= 2 and all(len(p) == 3 for p in parts[1:]):
-                num_str = num_str.replace(",", "")   # 6,000 → 6000
+                num_str = num_str.replace(",", "")  # 6,000 → 6000
             else:
                 num_str = num_str.replace(",", ".")  # 6,5 → 6.5 (decimal)
         elif "." in num_str and "," in num_str:
@@ -289,6 +322,7 @@ def detect_currency(price_str: str, description: str = "", title: str = "") -> d
 
 # ─── Phone / WhatsApp extraction ──────────────────────────────────────────────
 
+
 def extract_phone_number(text: str) -> str | None:
     """
     Extracts a Peruvian mobile number from free text and returns it as
@@ -311,7 +345,8 @@ def extract_phone_number(text: str) -> str | None:
     m = re.search(
         r"(?:cel(?:ular)?|whatsapp|wsp|wa|tlf|telf|tel|llam[ae]r?|escrib[ei]r?|contact[ao]r?)[:\s]*"
         r"(9\d{2})[\s\-]?(\d{3})[\s\-]?(\d{3})",
-        text, re.IGNORECASE,
+        text,
+        re.IGNORECASE,
     )
     if m:
         return "51" + m.group(1) + m.group(2) + m.group(3)
@@ -326,6 +361,7 @@ def extract_phone_number(text: str) -> str | None:
 
 # ─── Vehicle detail extraction from free text ─────────────────────────────────
 
+
 def extract_vehicle_details(text: str) -> dict[str, Any]:
     """Parses km, transmission, fuel type and listing age from raw text."""
     details: dict[str, Any] = {}
@@ -333,7 +369,8 @@ def extract_vehicle_details(text: str) -> dict[str, Any]:
     # Kilometraje (handles "85.000 km", "85,000 km", "85000 km", "85 mil km")
     km_match = re.search(
         r"(\d{1,3}[.,]\d{3}|\d{2,6})\s*(km|kilómetros|kilometros|millas)",
-        text, re.IGNORECASE,
+        text,
+        re.IGNORECASE,
     )
     if km_match:
         km_raw = km_match.group(1).replace(".", "").replace(",", "")
@@ -363,14 +400,22 @@ def extract_vehicle_details(text: str) -> dict[str, Any]:
         details["combustible"] = "Gasolina"
 
     # Único dueño
-    if re.search(r"único\s*dueño|unico\s*dueño|1\s*(solo\s*)?dueño|primer\s*dueño", text, re.IGNORECASE):
+    if re.search(
+        r"único\s*dueño|unico\s*dueño|1\s*(solo\s*)?dueño|primer\s*dueño",
+        text,
+        re.IGNORECASE,
+    ):
         details["unico_dueno"] = True
 
     # Red flags rápidos (para pre-filtrar antes de llamar a la IA)
     red_flags = []
-    if re.search(r"papeles?\s*(en\s*trámite|incompletos?|en\s*proceso)", text, re.IGNORECASE):
+    if re.search(
+        r"papeles?\s*(en\s*trámite|incompletos?|en\s*proceso)", text, re.IGNORECASE
+    ):
         red_flags.append("papeles en trámite")
-    if re.search(r"(motor|caja)\s*(reparad[ao]|reconstruid[ao]|overhaul)", text, re.IGNORECASE):
+    if re.search(
+        r"(motor|caja)\s*(reparad[ao]|reconstruid[ao]|overhaul)", text, re.IGNORECASE
+    ):
         red_flags.append("motor/caja reparado")
     if re.search(r"chocad[ao]|sinestro|accidente|golpe", text, re.IGNORECASE):
         red_flags.append("historial de choque")
@@ -383,6 +428,7 @@ def extract_vehicle_details(text: str) -> dict[str, Any]:
 
 
 # ─── Single-item scraper (used by Telegram bot) ───────────────────────────────
+
 
 async def scrape_item_url(url: str) -> dict[str, Any] | None:
     """
@@ -423,13 +469,17 @@ async def scrape_item_url(url: str) -> dict[str, Any] | None:
                     t = (await d.inner_text()).strip()
                     if len(t) > 30:
                         desc_candidates.append(t)
-                full_description = max(desc_candidates, key=len) if desc_candidates else ""
+                full_description = (
+                    max(desc_candidates, key=len) if desc_candidates else ""
+                )
 
                 # Condition
                 condition = ""
                 cond_el = page.locator('text="Estado"').locator("xpath=..")
                 if await cond_el.count() > 0:
-                    condition = (await cond_el.inner_text()).replace("Estado", "").strip()
+                    condition = (
+                        (await cond_el.inner_text()).replace("Estado", "").strip()
+                    )
 
                 # First image
                 image_url = ""
@@ -438,41 +488,41 @@ async def scrape_item_url(url: str) -> dict[str, Any] | None:
                     image_url = await img_el.first.get_attribute("src") or ""
 
                 # Year
-                year_text   = f"{title} {full_description}"
+                year_text = f"{title} {full_description}"
                 year_matches = re.findall(r"\b(19[5-9]\d|20[0-2]\d)\b", year_text)
                 year = int(year_matches[0]) if year_matches else None
 
                 combined = f"{full_description} {condition}"
-                details  = extract_vehicle_details(combined)
+                details = extract_vehicle_details(combined)
                 currency = detect_currency(price, full_description, title)
-                phone    = extract_phone_number(f"{full_description} {condition}")
+                phone = extract_phone_number(f"{full_description} {condition}")
 
                 return {
-                    "title":             title or "Auto sin título",
-                    "price":             price,
-                    "currency":          currency["currency"],
-                    "price_usd":         currency["amount_usd"],
-                    "price_amount":      currency["amount_original"],
-                    "currency_note":     currency["note"],
-                    "url":               url,
-                    "image_url":         image_url,
-                    "condition":         condition,
-                    "description":       full_description,
-                    "city":              "lima",
-                    "año":               year,
-                    "kilometraje":       details.get("kilometraje"),
-                    "transmision":       details.get("transmision"),
-                    "combustible":       details.get("combustible"),
-                    "unico_dueno":       details.get("unico_dueno", False),
+                    "title": title or "Auto sin título",
+                    "price": price,
+                    "currency": currency["currency"],
+                    "price_usd": currency["amount_usd"],
+                    "price_amount": currency["amount_original"],
+                    "currency_note": currency["note"],
+                    "url": url,
+                    "image_url": image_url,
+                    "condition": condition,
+                    "description": full_description,
+                    "city": "lima",
+                    "año": year,
+                    "kilometraje": details.get("kilometraje"),
+                    "transmision": details.get("transmision"),
+                    "combustible": details.get("combustible"),
+                    "unico_dueno": details.get("unico_dueno", False),
                     "red_flags_scraper": details.get("red_flags_detectados", []),
-                    "whatsapp_number":   phone,
+                    "whatsapp_number": phone,
                     "raw_data": (
                         f"Moneda: {currency['currency']} | "
                         f"Precio: {price} | USD: ${currency['amount_usd']} | "
                         f"Año: {year or 'desconocido'} | "
-                        f"Km: {details.get('kilometraje','desconocido')} | "
-                        f"Transmisión: {details.get('transmision','desconocida')} | "
-                        f"Combustible: {details.get('combustible','desconocido')} | "
+                        f"Km: {details.get('kilometraje', 'desconocido')} | "
+                        f"Transmisión: {details.get('transmision', 'desconocida')} | "
+                        f"Combustible: {details.get('combustible', 'desconocido')} | "
                         f"Descripción: {full_description}"
                     ),
                 }
@@ -486,6 +536,7 @@ async def scrape_item_url(url: str) -> dict[str, Any] | None:
 
 # ─── Facebook Scraper ──────────────────────────────────────────────────────────
 
+
 class FacebookScraper:
     def __init__(
         self,
@@ -494,10 +545,10 @@ class FacebookScraper:
         max_price: int = 15000,
         query: str = "",
     ) -> None:
-        self.city      = city.lower().strip()
+        self.city = city.lower().strip()
         self.min_price = min_price
         self.max_price = max_price
-        self.query     = query
+        self.query = query
 
     def _build_url(self) -> str:
         """
@@ -509,20 +560,20 @@ class FacebookScraper:
 
         # Build price fragment — skip entirely when both are 0 (no price filter)
         if self.min_price > 0 or self.max_price > 0:
-            price_qs = (
-                f"&minPrice={self.min_price}" if self.min_price > 0 else ""
-            ) + (
+            price_qs = (f"&minPrice={self.min_price}" if self.min_price > 0 else "") + (
                 f"&maxPrice={self.max_price}" if self.max_price > 0 else ""
             )
         else:
             price_qs = ""
 
         if self.query:
-            base   = f"https://www.facebook.com/marketplace/{slug}/search/"
+            base = f"https://www.facebook.com/marketplace/{slug}/search/"
             params = f"?query={urllib.parse.quote(self.query)}{price_qs}&exact=false"
         else:
-            base   = f"https://www.facebook.com/marketplace/{slug}/vehicles"
-            params = f"?{price_qs.lstrip('&')}&exact=false" if price_qs else "?exact=false"
+            base = f"https://www.facebook.com/marketplace/{slug}/vehicles"
+            params = (
+                f"?{price_qs.lstrip('&')}&exact=false" if price_qs else "?exact=false"
+            )
 
         return base + params
 
@@ -545,7 +596,7 @@ class FacebookScraper:
                 await _human_scroll(page, iterations=random.randint(3, 5))
 
                 # ── Collect listing links ──────────────────────────────────────
-                elements  = await page.locator('a[href*="/marketplace/item/"]').all()
+                elements = await page.locator('a[href*="/marketplace/item/"]').all()
                 seen_urls: set[str] = set()
 
                 for el in elements:
@@ -557,8 +608,8 @@ class FacebookScraper:
                         continue
                     seen_urls.add(href)
 
-                    full_url    = "https://www.facebook.com" + href.split("?")[0]
-                    text_lines  = [
+                    full_url = "https://www.facebook.com" + href.split("?")[0]
+                    text_lines = [
                         ln.strip()
                         for ln in (await el.inner_text()).split("\n")
                         if ln.strip()
@@ -583,14 +634,16 @@ class FacebookScraper:
                         continue
 
                     # ── Open item page for full details ───────────────────────
-                    await _human_delay(0.5, 1.5)   # pause between card reads
-                    item_page        = await context.new_page()
+                    await _human_delay(0.5, 1.5)  # pause between card reads
+                    item_page = await context.new_page()
                     full_description = ""
-                    condition        = ""
-                    structured       : dict[str, Any] = {}
+                    condition = ""
+                    structured: dict[str, Any] = {}
 
                     try:
-                        await item_page.goto(full_url, wait_until="domcontentloaded", timeout=30000)
+                        await item_page.goto(
+                            full_url, wait_until="domcontentloaded", timeout=30000
+                        )
                         await _human_delay(1.5, 3.0)
 
                         # Full description
@@ -606,13 +659,17 @@ class FacebookScraper:
                         # Condition
                         cond_el = item_page.locator('text="Estado"').locator("xpath=..")
                         if await cond_el.count() > 0:
-                            condition = (await cond_el.inner_text()).replace("Estado", "").strip()
+                            condition = (
+                                (await cond_el.inner_text())
+                                .replace("Estado", "")
+                                .strip()
+                            )
 
                         # Structured details (year, km, transmission, fuel from sidebar)
                         details_text = ""
                         for sel in [
                             '[aria-label*="Detalles"]',
-                            'div[class*="x1dr75xp"]',   # FB internal class (may change)
+                            'div[class*="x1dr75xp"]',  # FB internal class (may change)
                         ]:
                             el_det = item_page.locator(sel)
                             if await el_det.count() > 0:
@@ -621,7 +678,9 @@ class FacebookScraper:
 
                         # Also search year in title/description
                         year_search_text = f"{title} {full_description} {details_text}"
-                        year_matches = re.findall(r"\b(19[5-9]\d|20[0-2]\d)\b", year_search_text)
+                        year_matches = re.findall(
+                            r"\b(19[5-9]\d|20[0-2]\d)\b", year_search_text
+                        )
                         if year_matches:
                             structured["año"] = int(year_matches[0])
 
@@ -658,25 +717,25 @@ class FacebookScraper:
 
                     # ── Build car record ──────────────────────────────────────
                     car: dict[str, Any] = {
-                        "title":         title,
-                        "price":         price,
+                        "title": title,
+                        "price": price,
                         # Currency info
-                        "currency":      currency_info["currency"],
-                        "price_usd":     currency_info["amount_usd"],
-                        "price_amount":  currency_info["amount_original"],
+                        "currency": currency_info["currency"],
+                        "price_usd": currency_info["amount_usd"],
+                        "price_amount": currency_info["amount_original"],
                         "currency_note": currency_info["note"],
                         # Details
-                        "url":           full_url,
-                        "image_url":     image_url,
-                        "condition":     condition,
-                        "description":   full_description,
-                        "city":          PERU_CITIES.get(self.city, {}).get("label", self.city),
+                        "url": full_url,
+                        "image_url": image_url,
+                        "condition": condition,
+                        "description": full_description,
+                        "city": PERU_CITIES.get(self.city, {}).get("label", self.city),
                         # Structured
-                        "año":           structured.get("año"),
-                        "kilometraje":   structured.get("kilometraje"),
-                        "transmision":   structured.get("transmision"),
-                        "combustible":   structured.get("combustible"),
-                        "unico_dueno":   structured.get("unico_dueno", False),
+                        "año": structured.get("año"),
+                        "kilometraje": structured.get("kilometraje"),
+                        "transmision": structured.get("transmision"),
+                        "combustible": structured.get("combustible"),
+                        "unico_dueno": structured.get("unico_dueno", False),
                         "red_flags_scraper": structured.get("red_flags_detectados", []),
                         "whatsapp_number": phone_number,
                         # Raw text for AI
@@ -696,11 +755,12 @@ class FacebookScraper:
                     results.append(car)
                     print(
                         f"  ✓ {title[:45]} | {price} "
-                        f"({'S/' if currency_info['currency']=='PEN' else '$'}"
+                        f"({'S/' if currency_info['currency'] == 'PEN' else '$'}"
                         f"{currency_info['amount_original']:,.0f} → "
                         f"${currency_info['amount_usd']:,.0f} USD) "
                         f"| {currency_info['note']}"
-                        if currency_info["amount_original"] else f"  ✓ {title[:45]} | {price}"
+                        if currency_info["amount_original"]
+                        else f"  ✓ {title[:45]} | {price}"
                     )
 
                 await context.close()
@@ -710,13 +770,15 @@ class FacebookScraper:
             print(f"Error en scraping: {e}")
 
         if skipped_non_peru:
-            print(f"\n  📍 {skipped_non_peru} publicación(es) filtrada(s) por estar fuera de Perú.")
+            print(
+                f"\n  📍 {skipped_non_peru} publicación(es) filtrada(s) por estar fuera de Perú."
+            )
 
         return results
 
 
 if __name__ == "__main__":
     scraper = FacebookScraper("trujillo", 3000, 15000)
-    autos   = asyncio.run(scraper.scrape_cars(3))
+    autos = asyncio.run(scraper.scrape_cars(3))
     for a in autos:
         print(a)

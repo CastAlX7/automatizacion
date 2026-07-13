@@ -83,6 +83,7 @@ class SecurityLogger:
             return []
 
         import time
+
         cutoff = time.time() - (hours * 3600)
         entries = []
         with open(self._log_path, encoding="utf-8") as f:

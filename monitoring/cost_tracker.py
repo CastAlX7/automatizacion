@@ -28,7 +28,10 @@ DATA_DIR = Path(__file__).resolve().parent / "data"
 GROQ_PRICING = {
     "llama-3.3-70b-versatile": {"input_per_1m": 0.59, "output_per_1m": 0.79},
     "llama-3.1-8b-instant": {"input_per_1m": 0.05, "output_per_1m": 0.08},
-    "meta-llama/llama-4-scout-17b-16e-instruct": {"input_per_1m": 0.11, "output_per_1m": 0.34},
+    "meta-llama/llama-4-scout-17b-16e-instruct": {
+        "input_per_1m": 0.11,
+        "output_per_1m": 0.34,
+    },
 }
 
 DEFAULT_PRICING = {"input_per_1m": 0.59, "output_per_1m": 0.79}
@@ -93,7 +96,14 @@ class CostTracker:
             self._session_totals["latency_total_s"] += latency_s
 
             agent_totals = self._by_agent.setdefault(
-                agent, {"tokens_in": 0, "tokens_out": 0, "cost_usd": 0, "calls": 0, "latencies": []}
+                agent,
+                {
+                    "tokens_in": 0,
+                    "tokens_out": 0,
+                    "cost_usd": 0,
+                    "calls": 0,
+                    "latencies": [],
+                },
             )
             agent_totals["tokens_in"] += tokens_in
             agent_totals["tokens_out"] += tokens_out
@@ -110,7 +120,9 @@ class CostTracker:
         return round(self._session_totals["cost_usd"], 6)
 
     def session_tokens(self) -> int:
-        return int(self._session_totals["tokens_in"] + self._session_totals["tokens_out"])
+        return int(
+            self._session_totals["tokens_in"] + self._session_totals["tokens_out"]
+        )
 
     def latency_percentile(self, agent: str, p: int = 95) -> float | None:
         data = self._by_agent.get(agent, {}).get("latencies", [])
@@ -135,9 +147,15 @@ class CostTracker:
                 "tokens_in": int(data["tokens_in"]),
                 "tokens_out": int(data["tokens_out"]),
                 "cost_usd": round(data["cost_usd"], 6),
-                "latency_p50_s": sorted_lat[min(p50_idx, len(sorted_lat) - 1)] if sorted_lat else 0,
-                "latency_p95_s": sorted_lat[min(p95_idx, len(sorted_lat) - 1)] if sorted_lat else 0,
-                "latency_p99_s": sorted_lat[min(p99_idx, len(sorted_lat) - 1)] if sorted_lat else 0,
+                "latency_p50_s": sorted_lat[min(p50_idx, len(sorted_lat) - 1)]
+                if sorted_lat
+                else 0,
+                "latency_p95_s": sorted_lat[min(p95_idx, len(sorted_lat) - 1)]
+                if sorted_lat
+                else 0,
+                "latency_p99_s": sorted_lat[min(p99_idx, len(sorted_lat) - 1)]
+                if sorted_lat
+                else 0,
             }
 
         sorted_all = sorted(all_latencies) if all_latencies else []
@@ -145,9 +163,15 @@ class CostTracker:
             "total_calls": int(self._session_totals["calls"]),
             "total_tokens": self.session_tokens(),
             "total_cost_usd": round(self._session_totals["cost_usd"], 6),
-            "latency_p50_s": sorted_all[int(len(sorted_all) * 0.5)] if sorted_all else 0,
-            "latency_p95_s": sorted_all[int(len(sorted_all) * 0.95)] if sorted_all else 0,
-            "latency_p99_s": sorted_all[int(len(sorted_all) * 0.99)] if sorted_all else 0,
+            "latency_p50_s": sorted_all[int(len(sorted_all) * 0.5)]
+            if sorted_all
+            else 0,
+            "latency_p95_s": sorted_all[int(len(sorted_all) * 0.95)]
+            if sorted_all
+            else 0,
+            "latency_p99_s": sorted_all[int(len(sorted_all) * 0.99)]
+            if sorted_all
+            else 0,
             "by_agent": agent_summary,
         }
 

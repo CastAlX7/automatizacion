@@ -43,20 +43,30 @@ async def checkpointer():
 
 @pytest.fixture
 def bot(checkpointer):
-    return TelegramBotAgent(token="fake", groq_key="fake", allowed_users=["1"], checkpointer=checkpointer)
+    return TelegramBotAgent(
+        token="fake", groq_key="fake", allowed_users=["1"], checkpointer=checkpointer
+    )
 
 
 def test_build_tools_schema(bot):
     tools = bot._build_tools(chat_id=123)
     names = sorted(t.name for t in tools)
-    assert names == ["actualizar_estado", "analizar_url", "buscar_autos", "resumen", "ver_pipeline"]
+    assert names == [
+        "actualizar_estado",
+        "analizar_url",
+        "buscar_autos",
+        "resumen",
+        "ver_pipeline",
+    ]
     for t in tools:
         assert t.description
 
 
 @pytest.mark.asyncio
 async def test_run_agent_direct_answer(bot):
-    bot.model = ScriptedChatModel(responses=[AIMessage(content="Hola! ¿En qué te ayudo?")])
+    bot.model = ScriptedChatModel(
+        responses=[AIMessage(content="Hola! ¿En qué te ayudo?")]
+    )
     response = await bot._run_agent(chat_id=1, username="tester", text="hola")
     assert response == "Hola! ¿En qué te ayudo?"
 
@@ -66,11 +76,17 @@ async def test_run_agent_executes_tool_and_answers(bot):
     # Airtable isn't configured in this test, so `resumen` returns its
     # deterministic "not configured" message — the point is verifying the
     # ReAct loop actually calls the real tool and feeds its result back.
-    bot.model = ScriptedChatModel(responses=[
-        AIMessage(content="", tool_calls=[ToolCall(name="resumen", args={}, id="call_1")]),
-        AIMessage(content="No tienes datos guardados todavía."),
-    ])
-    response = await bot._run_agent(chat_id=2, username="tester", text="dame el resumen")
+    bot.model = ScriptedChatModel(
+        responses=[
+            AIMessage(
+                content="", tool_calls=[ToolCall(name="resumen", args={}, id="call_1")]
+            ),
+            AIMessage(content="No tienes datos guardados todavía."),
+        ]
+    )
+    response = await bot._run_agent(
+        chat_id=2, username="tester", text="dame el resumen"
+    )
     assert response == "No tienes datos guardados todavía."
 
 
@@ -90,7 +106,9 @@ async def test_reset_thread_deletes_history(bot, checkpointer):
     bot.model = ScriptedChatModel(responses=[AIMessage(content="ok")])
     await bot._run_agent(chat_id=4, username="tester", text="hola")
 
-    snapshot_before = await checkpointer.aget_tuple({"configurable": {"thread_id": "4"}})
+    snapshot_before = await checkpointer.aget_tuple(
+        {"configurable": {"thread_id": "4"}}
+    )
     assert snapshot_before is not None
 
     await bot._reset_thread("4")

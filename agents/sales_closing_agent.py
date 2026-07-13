@@ -40,9 +40,9 @@ class SalesClosingAgent:
     """LangGraph node: evalúa la oferta contra la regla de negocio y cierra o contraoferta."""
 
     def __init__(self, api_key: str, model: str = "llama-3.3-70b-versatile") -> None:
-        self.llm = ChatGroq(model=model, api_key=api_key, temperature=0.3).with_structured_output(
-            SalesClosingResult
-        )
+        self.llm = ChatGroq(
+            model=model, api_key=api_key, temperature=0.3
+        ).with_structured_output(SalesClosingResult)
 
     async def negotiate(self, offer: float, state: CarSaleState) -> dict[str, Any]:
         offer = float(offer)
@@ -63,7 +63,10 @@ class SalesClosingAgent:
             },
             ensure_ascii=False,
         )
-        messages = [SystemMessage(content=SYSTEM_PROMPT), HumanMessage(content=user_content)]
+        messages = [
+            SystemMessage(content=SYSTEM_PROMPT),
+            HumanMessage(content=user_content),
+        ]
 
         result: SalesClosingResult | None = None
         last_error: Exception | None = None
@@ -76,7 +79,9 @@ class SalesClosingAgent:
                 result = None
 
         if result is None:
-            state.sale_data["error"] = f"No se pudo obtener respuesta estructurada de Groq: {last_error}"
+            state.sale_data["error"] = (
+                f"No se pudo obtener respuesta estructurada de Groq: {last_error}"
+            )
             return {"error": state.sale_data["error"], "venta_completada": False}
 
         state.status = "negotiating"
@@ -90,7 +95,9 @@ class SalesClosingAgent:
                 f"{state.car_data.get('año') or state.car_data.get('anio')}"
             )
             resumen.precio = resumen.precio or precio_final
-            resumen.fecha = resumen.fecha or datetime.now(timezone.utc).date().isoformat()
+            resumen.fecha = (
+                resumen.fecha or datetime.now(timezone.utc).date().isoformat()
+            )
 
             pdf_path = generate_contract_pdf(
                 output_path=f"contracts/{state.car_id}.pdf",
@@ -116,8 +123,10 @@ class SalesClosingAgent:
                 "venta_completada": True,
             }
 
-        contraoferta = result.contraoferta if result.contraoferta and result.contraoferta >= min_aceptable else max(
-            min_aceptable, offer
+        contraoferta = (
+            result.contraoferta
+            if result.contraoferta and result.contraoferta >= min_aceptable
+            else max(min_aceptable, offer)
         )
 
         if state.negotiation_attempts >= 3:

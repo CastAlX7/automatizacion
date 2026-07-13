@@ -1,4 +1,5 @@
 """Anymotor Telegram Bot Agent — agente ReAct de LangGraph con memoria persistida."""
+
 from __future__ import annotations
 
 import asyncio
@@ -85,8 +86,13 @@ REGLAS CRÍTICAS — DEBES SEGUIRLAS SIEMPRE:
 
 
 class BuscarAutosArgs(BaseModel):
-    ciudad: Literal["lima", "trujillo", "arequipa"] = Field(description="Ciudad peruana donde buscar")
-    modelo: str = Field(default="", description="Modelo a buscar (ej: 'Toyota Corolla'). Vacío = cualquier auto.")
+    ciudad: Literal["lima", "trujillo", "arequipa"] = Field(
+        description="Ciudad peruana donde buscar"
+    )
+    modelo: str = Field(
+        default="",
+        description="Modelo a buscar (ej: 'Toyota Corolla'). Vacío = cualquier auto.",
+    )
     precio_min: int = Field(
         default=0,
         description=(
@@ -106,9 +112,9 @@ class BuscarAutosArgs(BaseModel):
 
 
 class VerPipelineArgs(BaseModel):
-    estado: Literal["todos", "Encontrado", "Contactando", "Negociando", "Comprado", "Vendido"] = Field(
-        default="todos", description="Estado a filtrar. 'todos' para ver todos."
-    )
+    estado: Literal[
+        "todos", "Encontrado", "Contactando", "Negociando", "Comprado", "Vendido"
+    ] = Field(default="todos", description="Estado a filtrar. 'todos' para ver todos.")
 
 
 class AnalizarUrlArgs(BaseModel):
@@ -116,10 +122,12 @@ class AnalizarUrlArgs(BaseModel):
 
 
 class ActualizarEstadoArgs(BaseModel):
-    titulo_parcial: str = Field(description="Parte del título del auto para identificarlo (ej: 'Corolla 2018')")
-    nuevo_estado: Literal["Encontrado", "Contactando", "Negociando", "Comprado", "Vendido"] = Field(
-        description="Nuevo estado del pipeline"
+    titulo_parcial: str = Field(
+        description="Parte del título del auto para identificarlo (ej: 'Corolla 2018')"
     )
+    nuevo_estado: Literal[
+        "Encontrado", "Contactando", "Negociando", "Comprado", "Vendido"
+    ] = Field(description="Nuevo estado del pipeline")
 
 
 class ResumenArgs(BaseModel):
@@ -138,7 +146,9 @@ class TelegramBotAgent:
     ) -> None:
         self.token = token
         self.groq_key = groq_key
-        self.allowed_users = [str(u).strip() for u in (allowed_users or []) if str(u).strip()]
+        self.allowed_users = [
+            str(u).strip() for u in (allowed_users or []) if str(u).strip()
+        ]
         self.airtable = AirtableTool()
         self.model = ChatGroq(model=BOT_MODEL, api_key=groq_key, temperature=0.25)
         self._checkpointer_override = checkpointer
@@ -160,7 +170,9 @@ class TelegramBotAgent:
 
     def send_message(self, chat_id: int, text: str) -> None:
         for chunk in _split_text(text, 4000):
-            self._post("sendMessage", chat_id=chat_id, text=chunk, parse_mode="Markdown")
+            self._post(
+                "sendMessage", chat_id=chat_id, text=chunk, parse_mode="Markdown"
+            )
 
     def _typing(self, chat_id: int) -> None:
         self._post("sendChatAction", chat_id=chat_id, action="typing")
@@ -189,7 +201,9 @@ class TelegramBotAgent:
 
     def run_forever(self) -> None:
         self._running = True
-        print(f"[AnyBot] Iniciado. Usuarios autorizados: {self.allowed_users or 'ninguno'}")
+        print(
+            f"[AnyBot] Iniciado. Usuarios autorizados: {self.allowed_users or 'ninguno'}"
+        )
         while self._running:
             try:
                 for upd in self._get_updates():
@@ -205,7 +219,9 @@ class TelegramBotAgent:
             return
         chat_id = msg["chat"]["id"]
         user_id = msg["from"]["id"]
-        username = msg["from"].get("username") or msg["from"].get("first_name") or str(user_id)
+        username = (
+            msg["from"].get("username") or msg["from"].get("first_name") or str(user_id)
+        )
         text = msg["text"].strip()
         _log(f"MSG  [{username}] → {text[:120]}")
         threading.Thread(
@@ -226,16 +242,19 @@ class TelegramBotAgent:
 
         if text == "/start":
             _log(f"CMD  [{username}] /start")
-            self.send_message(chat_id, (
-                "👋 *¡Hola! Soy el agente de Anymotor.*\n\n"
-                "Puedo ayudarte a:\n"
-                "• 🔍 Buscar autos en Lima, Trujillo o Arequipa\n"
-                "• 📋 Ver tu pipeline de deals\n"
-                "• 🔗 Analizar un auto (pega la URL de Facebook)\n"
-                "• ✏️ Actualizar el estado de un deal\n"
-                "• 📊 Ver tu resumen de ganancias\n\n"
-                "Escríbeme lo que necesitas en lenguaje normal. ¿Qué buscamos hoy?"
-            ))
+            self.send_message(
+                chat_id,
+                (
+                    "👋 *¡Hola! Soy el agente de Anymotor.*\n\n"
+                    "Puedo ayudarte a:\n"
+                    "• 🔍 Buscar autos en Lima, Trujillo o Arequipa\n"
+                    "• 📋 Ver tu pipeline de deals\n"
+                    "• 🔗 Analizar un auto (pega la URL de Facebook)\n"
+                    "• ✏️ Actualizar el estado de un deal\n"
+                    "• 📊 Ver tu resumen de ganancias\n\n"
+                    "Escríbeme lo que necesitas en lenguaje normal. ¿Qué buscamos hoy?"
+                ),
+            )
             return
 
         if text == "/reset":
@@ -270,17 +289,25 @@ class TelegramBotAgent:
         try:
             if self._checkpointer_override is not None:
                 agent = create_agent(
-                    model=self.model, tools=tools, system_prompt=SYSTEM_PROMPT,
+                    model=self.model,
+                    tools=tools,
+                    system_prompt=SYSTEM_PROMPT,
                     checkpointer=self._checkpointer_override,
                 )
-                result = await agent.ainvoke({"messages": [HumanMessage(content=text)]}, config=config)
+                result = await agent.ainvoke(
+                    {"messages": [HumanMessage(content=text)]}, config=config
+                )
             else:
                 async with checkpointer_scope() as checkpointer:
                     agent = create_agent(
-                        model=self.model, tools=tools, system_prompt=SYSTEM_PROMPT,
+                        model=self.model,
+                        tools=tools,
+                        system_prompt=SYSTEM_PROMPT,
                         checkpointer=checkpointer,
                     )
-                    result = await agent.ainvoke({"messages": [HumanMessage(content=text)]}, config=config)
+                    result = await agent.ainvoke(
+                        {"messages": [HumanMessage(content=text)]}, config=config
+                    )
         except Exception as e:
             _log(f"ERR  [{username}] error del agente: {e}")
             return f"⚠️ Error al conectar con la IA: {e}"
@@ -295,7 +322,13 @@ class TelegramBotAgent:
         poder avisar al usuario ('Buscando...') antes de operaciones lentas."""
 
         @tool("buscar_autos", args_schema=BuscarAutosArgs)
-        async def buscar_autos(ciudad: str, modelo: str = "", precio_min: int = 0, precio_max: int = 0, cantidad: int = 3) -> str:
+        async def buscar_autos(
+            ciudad: str,
+            modelo: str = "",
+            precio_min: int = 0,
+            precio_max: int = 0,
+            cantidad: int = 3,
+        ) -> str:
             """Busca y analiza autos en Facebook Marketplace de una ciudad peruana. Tarda 1-3 minutos. SOLO puede llamarse UNA VEZ por turno."""
             if not modelo and precio_min == 0 and precio_max == 0:
                 precio_min, precio_max = 3000, 15000
@@ -306,7 +339,10 @@ class TelegramBotAgent:
                 f"{' (sin filtro de precio)' if sin_filtro else ''}... esto tarda 1-2 minutos ⏳",
             )
             return await self._tool_buscar_autos(
-                ciudad=ciudad, modelo=modelo, precio_min=precio_min, precio_max=precio_max,
+                ciudad=ciudad,
+                modelo=modelo,
+                precio_min=precio_min,
+                precio_max=precio_max,
                 cantidad=min(cantidad, 5),
             )
 
@@ -345,7 +381,9 @@ class TelegramBotAgent:
     ) -> str:
         from tools.scraper_tool import FacebookScraper
 
-        scraper = FacebookScraper(city=ciudad, min_price=precio_min, max_price=precio_max, query=modelo)
+        scraper = FacebookScraper(
+            city=ciudad, min_price=precio_min, max_price=precio_max, query=modelo
+        )
         autos = await scraper.scrape_cars(cantidad)
         orch = Orchestrator(api_key=self.groq_key)
 
@@ -376,7 +414,9 @@ class TelegramBotAgent:
                 "Prueba con otro modelo o amplía el rango de precio."
             )
 
-        lines = [f"✅ *{len(aptos)} oportunidad(es) encontrada(s)* de {total} analizado(s) en {ciudad.title()}:\n"]
+        lines = [
+            f"✅ *{len(aptos)} oportunidad(es) encontrada(s)* de {total} analizado(s) en {ciudad.title()}:\n"
+        ]
         for auto, state in aptos:
             cd = state.car_data
             pm = cd.get("precio_mercado") or 0
@@ -384,8 +424,12 @@ class TelegramBotAgent:
             gan = cd.get("ganancia_est") or 0
             pct = cd.get("margen_pct") or 0
             lines.append(f"🚗 *{auto.get('title', '?')}*")
-            lines.append(f"   💵 Publicado: {auto.get('price', '?')}  |  Mercado: ${pm:,.0f}")
-            lines.append(f"   🎯 Máx. pagar: ${pv:,.0f}  |  💰 Ganancia: ${gan:,.0f} ({pct:.0f}%)")
+            lines.append(
+                f"   💵 Publicado: {auto.get('price', '?')}  |  Mercado: ${pm:,.0f}"
+            )
+            lines.append(
+                f"   🎯 Máx. pagar: ${pv:,.0f}  |  💰 Ganancia: ${gan:,.0f} ({pct:.0f}%)"
+            )
             if auto.get("url"):
                 lines.append(f"   🔗 {auto['url']}")
             if auto.get("whatsapp_number"):
@@ -410,7 +454,13 @@ class TelegramBotAgent:
             if not cars:
                 return f"No tienes autos en estado *{estado}*."
 
-        emojis = {"Encontrado": "🔵", "Contactando": "🟡", "Negociando": "🟠", "Comprado": "🟣", "Vendido": "🟢"}
+        emojis = {
+            "Encontrado": "🔵",
+            "Contactando": "🟡",
+            "Negociando": "🟠",
+            "Comprado": "🟣",
+            "Vendido": "🟢",
+        }
         groups: dict[str, list] = {}
         for c in cars:
             groups.setdefault(c.get("Pipeline", "Encontrado"), []).append(c)
@@ -477,7 +527,11 @@ class TelegramBotAgent:
             lines.append("✅ *Puntos a favor:*")
             lines.extend(f"  • {f}" for f in green_flags[:4])
             lines.append("")
-        obs = state.inspection_data.get("observaciones") or state.inspection_data.get("resultado_inspeccion") or ""
+        obs = (
+            state.inspection_data.get("observaciones")
+            or state.inspection_data.get("resultado_inspeccion")
+            or ""
+        )
         if obs:
             lines.append(f"📋 _{obs[:350]}{'...' if len(obs) > 350 else ''}_")
         if car_data.get("whatsapp_number") and apto:
@@ -493,7 +547,11 @@ class TelegramBotAgent:
             return "Necesito el nombre (o parte del nombre) del auto para buscarlo."
 
         cars = self.airtable.get_approved_cars(max_records=100)
-        matches = [c for c in cars if titulo_parcial.lower() in str(c.get("Título", "")).lower()]
+        matches = [
+            c
+            for c in cars
+            if titulo_parcial.lower() in str(c.get("Título", "")).lower()
+        ]
 
         if not matches:
             return (
@@ -502,10 +560,14 @@ class TelegramBotAgent:
             )
         if len(matches) > 1:
             titles = "\n".join(f"• {c.get('Título', '?')}" for c in matches[:5])
-            return f"Encontré {len(matches)} coincidencias. Sé más específico:\n{titles}"
+            return (
+                f"Encontré {len(matches)} coincidencias. Sé más específico:\n{titles}"
+            )
 
         car = matches[0]
-        result = self.airtable.update_car(car.get("_id", ""), {"Pipeline": nuevo_estado})
+        result = self.airtable.update_car(
+            car.get("_id", ""), {"Pipeline": nuevo_estado}
+        )
         if result:
             return f"✅ *{car.get('Título', '?')}* → *{nuevo_estado}*"
         return "❌ No pude actualizar el registro. Revisa la configuración de Airtable."
@@ -533,7 +595,13 @@ class TelegramBotAgent:
             gan_pot += max(merc - pub, 0)
             gan_real += c.get("Ganancia Real") or 0
 
-        emojis = {"Encontrado": "🔵", "Contactando": "🟡", "Negociando": "🟠", "Comprado": "🟣", "Vendido": "🟢"}
+        emojis = {
+            "Encontrado": "🔵",
+            "Contactando": "🟡",
+            "Negociando": "🟠",
+            "Comprado": "🟣",
+            "Vendido": "🟢",
+        }
         lines = [f"📊 *Resumen Anymotor* ({total} autos)\n"]
         for stage in _PIPELINE_STATES:
             count = pipeline.get(stage, 0)
@@ -545,11 +613,14 @@ class TelegramBotAgent:
             lines.append(f"✅ Ganancia real: *${gan_real:,.0f}*")
             vendidos = pipeline.get("Vendido", 0)
             if vendidos:
-                lines.append(f"📈 Promedio por auto vendido: *${gan_real / vendidos:,.0f}*")
+                lines.append(
+                    f"📈 Promedio por auto vendido: *${gan_real / vendidos:,.0f}*"
+                )
         return "\n".join(lines)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _split_text(text: str, limit: int) -> list[str]:
     if len(text) <= limit:

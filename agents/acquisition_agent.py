@@ -155,9 +155,9 @@ class AcquisitionAgent:
     """LangGraph node: analiza un auto candidato y decide si es apto para reventa."""
 
     def __init__(self, api_key: str, model: str = "llama-3.3-70b-versatile") -> None:
-        self.llm = ChatGroq(model=model, api_key=api_key, temperature=0.15).with_structured_output(
-            AcquisitionResult
-        )
+        self.llm = ChatGroq(
+            model=model, api_key=api_key, temperature=0.15
+        ).with_structured_output(AcquisitionResult)
         self.llm_vision = ChatGroq(
             model=VISION_MODEL, api_key=api_key, temperature=0.15
         ).with_structured_output(AcquisitionResult)
@@ -182,10 +182,12 @@ class AcquisitionAgent:
         text_content = json.dumps(payload, ensure_ascii=False)
 
         if image_url:
-            human = HumanMessage(content=[
-                {"type": "text", "text": text_content},
-                {"type": "image_url", "image_url": {"url": image_url}},
-            ])
+            human = HumanMessage(
+                content=[
+                    {"type": "text", "text": text_content},
+                    {"type": "image_url", "image_url": {"url": image_url}},
+                ]
+            )
         else:
             human = HumanMessage(content=text_content)
 
@@ -203,7 +205,9 @@ class AcquisitionAgent:
                 result = None
 
         if result is None:
-            car_data["error"] = f"No se pudo obtener respuesta estructurada de Groq: {last_error}"
+            car_data["error"] = (
+                f"No se pudo obtener respuesta estructurada de Groq: {last_error}"
+            )
             return {
                 "car_data": car_data,
                 "status": "rejected",
@@ -212,7 +216,9 @@ class AcquisitionAgent:
 
         car_data["apto_venta"] = result.apto_venta
         car_data["precio_mercado"] = round(result.precio_mercado_sugerido, 2) or None
-        car_data["precio_venta"] = round(result.precio_negociacion_recomendado, 2) or None
+        car_data["precio_venta"] = (
+            round(result.precio_negociacion_recomendado, 2) or None
+        )
         car_data["precio_pub_usd"] = round(result.precio_publicado_usd, 2) or None
         car_data["ganancia_est"] = round(result.ganancia_estimada_usd, 2) or None
         car_data["margen_pct"] = round(result.margen_porcentaje, 1) or None

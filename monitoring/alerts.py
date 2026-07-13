@@ -38,13 +38,17 @@ class AlertMonitor:
 
     def _load_config(self) -> None:
         from shared.config_loader import load_config
+
         cfg = load_config(self._env)
         eval_cfg = cfg.get("evaluation", {})
         rate_cfg = cfg.get("rate_limits", {})
         self.thresholds = {
             "max_latency_p95_s": eval_cfg.get("max_latency_p95_s", 3),
             "max_cost_per_query_usd": eval_cfg.get("max_cost_per_query_usd", 0.01),
-            "budget_daily_usd": eval_cfg.get("max_cost_per_query_usd", 0.01) * rate_cfg.get("max_requests_per_minute", 30) * 60 * 8,
+            "budget_daily_usd": eval_cfg.get("max_cost_per_query_usd", 0.01)
+            * rate_cfg.get("max_requests_per_minute", 30)
+            * 60
+            * 8,
             "max_error_rate_pct": 10,
             "max_tokens_per_session": rate_cfg.get("max_tokens_per_session", 20000),
             "checkpoint_db_max_mb": 500,
@@ -68,6 +72,7 @@ class AlertMonitor:
 
     def _check_latency(self) -> list[dict]:
         from monitoring.cost_tracker import CostTracker
+
         tracker = CostTracker()
         history = tracker.load_history(since_hours=1)
         if len(history) < 3:
@@ -79,25 +84,28 @@ class AlertMonitor:
         threshold = self.thresholds["max_latency_p95_s"]
 
         if p95 > threshold:
-            return [self._build_alert(
-                severity="warning",
-                metric="latency_p95_s",
-                value=round(p95, 2),
-                threshold=threshold,
-                category="latencia",
-                runbook=(
-                    "1. Revisar trazas LangSmith del último periodo\n"
-                    "2. Verificar si Groq tiene degradación (status.groq.com)\n"
-                    "3. Si persiste: evaluar fallback a modelo más rápido (8b)\n"
-                    "4. Revisar tamaño de prompts — reducir contexto si > 4000 tokens"
-                ),
-            )]
+            return [
+                self._build_alert(
+                    severity="warning",
+                    metric="latency_p95_s",
+                    value=round(p95, 2),
+                    threshold=threshold,
+                    category="latencia",
+                    runbook=(
+                        "1. Revisar trazas LangSmith del último periodo\n"
+                        "2. Verificar si Groq tiene degradación (status.groq.com)\n"
+                        "3. Si persiste: evaluar fallback a modelo más rápido (8b)\n"
+                        "4. Revisar tamaño de prompts — reducir contexto si > 4000 tokens"
+                    ),
+                )
+            ]
         return []
 
     # ── Costo acumulado vs presupuesto ──
 
     def _check_cost(self) -> list[dict]:
         from monitoring.cost_tracker import CostTracker
+
         tracker = CostTracker()
         cost_24h = tracker.cost_since(hours=24)
         budget = self.thresholds["budget_daily_usd"]
@@ -108,37 +116,43 @@ class AlertMonitor:
         pct = (cost_24h / budget) * 100
 
         if pct >= 100:
-            alerts.append(self._build_alert(
-                severity="critical",
-                metric="cost_24h_usd",
-                value=round(cost_24h, 4),
-                threshold=budget,
-                category="costo",
-                runbook=(
-                    "1. Presupuesto diario EXCEDIDO\n"
-                    "2. Revisar qué agente consume más (cost_tracker.summary())\n"
-                    "3. Considerar rate limiting inmediato\n"
-                    "4. Evaluar modelo más barato para queries simples"
-                ),
-            ))
+            alerts.append(
+                self._build_alert(
+                    severity="critical",
+                    metric="cost_24h_usd",
+                    value=round(cost_24h, 4),
+                    threshold=budget,
+                    category="costo",
+                    runbook=(
+                        "1. Presupuesto diario EXCEDIDO\n"
+                        "2. Revisar qué agente consume más (cost_tracker.summary())\n"
+                        "3. Considerar rate limiting inmediato\n"
+                        "4. Evaluar modelo más barato para queries simples"
+                    ),
+                )
+            )
         elif pct >= 90:
-            alerts.append(self._build_alert(
-                severity="warning",
-                metric="cost_24h_pct",
-                value=round(pct, 1),
-                threshold=90,
-                category="costo",
-                runbook="Costo al 90% del presupuesto diario. Monitorear de cerca.",
-            ))
+            alerts.append(
+                self._build_alert(
+                    severity="warning",
+                    metric="cost_24h_pct",
+                    value=round(pct, 1),
+                    threshold=90,
+                    category="costo",
+                    runbook="Costo al 90% del presupuesto diario. Monitorear de cerca.",
+                )
+            )
         elif pct >= 70:
-            alerts.append(self._build_alert(
-                severity="info",
-                metric="cost_24h_pct",
-                value=round(pct, 1),
-                threshold=70,
-                category="costo",
-                runbook="Costo al 70% del presupuesto. Revisar tendencia.",
-            ))
+            alerts.append(
+                self._build_alert(
+                    severity="info",
+                    metric="cost_24h_pct",
+                    value=round(pct, 1),
+                    threshold=70,
+                    category="costo",
+                    runbook="Costo al 70% del presupuesto. Revisar tendencia.",
+                )
+            )
 
         return alerts
 
@@ -146,6 +160,7 @@ class AlertMonitor:
 
     def _check_errors(self) -> list[dict]:
         from monitoring.cost_tracker import CostTracker
+
         tracker = CostTracker()
         history = tracker.load_history(since_hours=1)
         if len(history) < 5:
@@ -156,20 +171,22 @@ class AlertMonitor:
         threshold = self.thresholds["max_error_rate_pct"]
 
         if error_rate > threshold:
-            return [self._build_alert(
-                severity="critical",
-                metric="error_rate_pct",
-                value=round(error_rate, 1),
-                threshold=threshold,
-                category="disponibilidad",
-                runbook=(
-                    "1. Revisar errores en trazas LangSmith\n"
-                    "2. Verificar status de Groq API\n"
-                    "3. Si es rate limiting: reducir concurrencia\n"
-                    "4. Si es error de modelo: rollback al prompt anterior\n"
-                    "5. Activar fallback de proveedor si disponible"
-                ),
-            )]
+            return [
+                self._build_alert(
+                    severity="critical",
+                    metric="error_rate_pct",
+                    value=round(error_rate, 1),
+                    threshold=threshold,
+                    category="disponibilidad",
+                    runbook=(
+                        "1. Revisar errores en trazas LangSmith\n"
+                        "2. Verificar status de Groq API\n"
+                        "3. Si es rate limiting: reducir concurrencia\n"
+                        "4. Si es error de modelo: rollback al prompt anterior\n"
+                        "5. Activar fallback de proveedor si disponible"
+                    ),
+                )
+            ]
         return []
 
     # ── Saturación del checkpointer ──
@@ -183,18 +200,20 @@ class AlertMonitor:
         threshold = self.thresholds["checkpoint_db_max_mb"]
 
         if size_mb > threshold:
-            return [self._build_alert(
-                severity="warning",
-                metric="checkpoint_db_mb",
-                value=round(size_mb, 1),
-                threshold=threshold,
-                category="saturación",
-                runbook=(
-                    "1. Base de checkpoints excede el límite\n"
-                    "2. Purgar checkpoints antiguos (> 30 días)\n"
-                    "3. Considerar migrar a PostgreSQL si el volumen sigue creciendo"
-                ),
-            )]
+            return [
+                self._build_alert(
+                    severity="warning",
+                    metric="checkpoint_db_mb",
+                    value=round(size_mb, 1),
+                    threshold=threshold,
+                    category="saturación",
+                    runbook=(
+                        "1. Base de checkpoints excede el límite\n"
+                        "2. Purgar checkpoints antiguos (> 30 días)\n"
+                        "3. Considerar migrar a PostgreSQL si el volumen sigue creciendo"
+                    ),
+                )
+            ]
         return []
 
     # ── Detección de inyección de prompts ──
@@ -220,19 +239,21 @@ class AlertMonitor:
                     continue
 
         if recent_attempts >= 3:
-            return [self._build_alert(
-                severity="critical",
-                metric="injection_attempts_1h",
-                value=recent_attempts,
-                threshold=3,
-                category="seguridad",
-                runbook=(
-                    "1. Revisar security_log.jsonl para ver los inputs sospechosos\n"
-                    "2. Identificar si es un usuario o un patrón automatizado\n"
-                    "3. Considerar bloquear IP/usuario\n"
-                    "4. Verificar que guardrails están activos"
-                ),
-            )]
+            return [
+                self._build_alert(
+                    severity="critical",
+                    metric="injection_attempts_1h",
+                    value=recent_attempts,
+                    threshold=3,
+                    category="seguridad",
+                    runbook=(
+                        "1. Revisar security_log.jsonl para ver los inputs sospechosos\n"
+                        "2. Identificar si es un usuario o un patrón automatizado\n"
+                        "3. Considerar bloquear IP/usuario\n"
+                        "4. Verificar que guardrails están activos"
+                    ),
+                )
+            ]
         return []
 
     # ── Helpers ──
@@ -265,7 +286,9 @@ class AlertMonitor:
         if not self._bot_token or not self._chat_id:
             return
 
-        icon = {"critical": "🔴", "warning": "🟡", "info": "🔵"}.get(alert["severity"], "⚪")
+        icon = {"critical": "🔴", "warning": "🟡", "info": "🔵"}.get(
+            alert["severity"], "⚪"
+        )
         msg = (
             f"{icon} *ALERTA {alert['severity'].upper()}*\n\n"
             f"Entorno: {alert['environment']}\n"
@@ -287,6 +310,7 @@ class AlertMonitor:
 
 def main():
     from dotenv import load_dotenv
+
     load_dotenv()
 
     monitor = AlertMonitor()
@@ -295,7 +319,9 @@ def main():
     if alerts:
         print(f"\n{len(alerts)} alert(s) fired:")
         for a in alerts:
-            print(f"  [{a['severity'].upper()}] {a['category']}: {a['metric']}={a['value']} (threshold={a['threshold']})")
+            print(
+                f"  [{a['severity'].upper()}] {a['category']}: {a['metric']}={a['value']} (threshold={a['threshold']})"
+            )
     else:
         print("No alerts.")
 

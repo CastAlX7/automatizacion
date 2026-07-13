@@ -18,7 +18,12 @@ def generate_contract_pdf(output_path: str | Path, contract: dict[str, Any]) -> 
     pdf.cell(0, 10, "Contrato de Compraventa (Resumen)", ln=1)
     pdf.ln(2)
 
-    pdf.cell(0, 8, f"Fecha: {contract.get('fecha') or datetime.now().date().isoformat()}", ln=1)
+    pdf.cell(
+        0,
+        8,
+        f"Fecha: {contract.get('fecha') or datetime.now().date().isoformat()}",
+        ln=1,
+    )
     pdf.cell(0, 8, f"Vendedor: {contract.get('vendedor', '')}", ln=1)
     pdf.cell(0, 8, f"Comprador: {contract.get('comprador', '')}", ln=1)
     pdf.cell(0, 8, f"Vehiculo: {contract.get('vehiculo', '')}", ln=1)

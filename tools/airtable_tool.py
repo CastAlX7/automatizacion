@@ -11,13 +11,16 @@ class AirtableTool:
     BASE_URL = "https://api.airtable.com/v0"
 
     def __init__(self, pat=None, base_id=None, table_name=None):
-        self.pat        = pat        or os.getenv("AIRTABLE_PAT", "")
-        self.base_id    = base_id    or os.getenv("AIRTABLE_BASE_ID", "")
+        self.pat = pat or os.getenv("AIRTABLE_PAT", "")
+        self.base_id = base_id or os.getenv("AIRTABLE_BASE_ID", "")
         self.table_name = table_name or os.getenv("AIRTABLE_TABLE_NAME", "Autos Aptos")
 
     @property
     def _headers(self):
-        return {"Authorization": f"Bearer {self.pat}", "Content-Type": "application/json"}
+        return {
+            "Authorization": f"Bearer {self.pat}",
+            "Content-Type": "application/json",
+        }
 
     @property
     def _table_url(self):
@@ -36,7 +39,9 @@ class AirtableTool:
             "sort[0][field]": "Fecha Análisis",
             "sort[0][direction]": "desc",
         }
-        resp = requests.get(self._table_url, headers=self._headers, params=params, timeout=10)
+        resp = requests.get(
+            self._table_url, headers=self._headers, params=params, timeout=10
+        )
         if resp.status_code != 200:
             return []
         result = []
@@ -47,13 +52,21 @@ class AirtableTool:
         return result
 
     # ── Crear ─────────────────────────────────────────────────────────────────
-    def save_car(self, car_data: dict[str, Any], inspection_data: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    def save_car(
+        self, car_data: dict[str, Any], inspection_data: dict[str, Any] | None = None
+    ) -> dict[str, Any] | None:
         if not self.is_configured():
             return None
 
         price_num = None
         try:
-            cleaned = str(car_data.get("price", "") or "").replace("$", "").replace("S/", "").replace(",", "").strip()
+            cleaned = (
+                str(car_data.get("price", "") or "")
+                .replace("$", "")
+                .replace("S/", "")
+                .replace(",", "")
+                .strip()
+            )
             if cleaned:
                 price_num = float(cleaned)
         except (ValueError, AttributeError):
@@ -61,37 +74,50 @@ class AirtableTool:
 
         obs = inspection_data or {}
         fields: dict[str, Any] = {
-            "Título":               car_data.get("title", "Sin título"),
-            "Precio Publicado":     price_num,
-            "Precio Mercado":       car_data.get("precio_mercado"),
+            "Título": car_data.get("title", "Sin título"),
+            "Precio Publicado": price_num,
+            "Precio Mercado": car_data.get("precio_mercado"),
             "Precio Venta Sugerido": car_data.get("precio_venta"),
-            "Estado":               car_data.get("condition", ""),
-            "URL":                  car_data.get("url", ""),
-            "Imagen":               car_data.get("image_url", ""),
-            "Observaciones":        obs.get("observaciones") or obs.get("resultado_inspeccion") or "",
-            "Razón":                obs.get("resultado_inspeccion") or "",
-            "Fecha Análisis":       datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-            "Ciudad":               car_data.get("city", ""),
-            "Teléfono":             car_data.get("whatsapp_number", ""),
-            "Pipeline":             "Encontrado",
+            "Estado": car_data.get("condition", ""),
+            "URL": car_data.get("url", ""),
+            "Imagen": car_data.get("image_url", ""),
+            "Observaciones": obs.get("observaciones")
+            or obs.get("resultado_inspeccion")
+            or "",
+            "Razón": obs.get("resultado_inspeccion") or "",
+            "Fecha Análisis": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            "Ciudad": car_data.get("city", ""),
+            "Teléfono": car_data.get("whatsapp_number", ""),
+            "Pipeline": "Encontrado",
         }
         fields = {k: v for k, v in fields.items() if v is not None and v != ""}
 
-        resp = requests.post(self._table_url, headers=self._headers, json={"fields": fields}, timeout=10)
+        resp = requests.post(
+            self._table_url, headers=self._headers, json={"fields": fields}, timeout=10
+        )
 
         # Si Pipeline no existe aún, reintenta sin él
         if resp.status_code == 422 and "Pipeline" in resp.text:
             fields.pop("Pipeline", None)
-            resp = requests.post(self._table_url, headers=self._headers, json={"fields": fields}, timeout=10)
+            resp = requests.post(
+                self._table_url,
+                headers=self._headers,
+                json={"fields": fields},
+                timeout=10,
+            )
 
         return resp.json() if resp.status_code in (200, 201) else None
 
     # ── Actualizar ────────────────────────────────────────────────────────────
-    def update_car(self, record_id: str, fields: dict[str, Any]) -> dict[str, Any] | None:
+    def update_car(
+        self, record_id: str, fields: dict[str, Any]
+    ) -> dict[str, Any] | None:
         """PATCH: actualiza campos específicos de un registro."""
         if not self.is_configured():
             return None
-        clean = {k: v for k, v in fields.items() if not k.startswith("_") and v is not None}
+        clean = {
+            k: v for k, v in fields.items() if not k.startswith("_") and v is not None
+        }
         resp = requests.patch(
             f"{self._table_url}/{record_id}",
             headers=self._headers,
@@ -106,26 +132,40 @@ class AirtableTool:
         if not self.is_configured():
             return ["❌ Airtable no configurado"]
 
-        schema_url = f"{self.BASE_URL}/meta/bases/{self.base_id}/tables/{self.table_name}/fields"
+        schema_url = (
+            f"{self.BASE_URL}/meta/bases/{self.base_id}/tables/{self.table_name}/fields"
+        )
         new_fields = [
             {
                 "name": "Pipeline",
                 "type": "singleSelect",
                 "options": {
                     "choices": [
-                        {"name": "Encontrado",  "color": "blueLight2"},
+                        {"name": "Encontrado", "color": "blueLight2"},
                         {"name": "Contactando", "color": "yellowLight2"},
-                        {"name": "Negociando",  "color": "orangeLight2"},
-                        {"name": "Comprado",    "color": "purpleLight2"},
-                        {"name": "Vendido",     "color": "greenLight2"},
+                        {"name": "Negociando", "color": "orangeLight2"},
+                        {"name": "Comprado", "color": "purpleLight2"},
+                        {"name": "Vendido", "color": "greenLight2"},
                     ]
                 },
             },
-            {"name": "Precio Compra Real",  "type": "currency", "options": {"precision": 0, "symbol": "$"}},
-            {"name": "Precio Venta Real",   "type": "currency", "options": {"precision": 0, "symbol": "$"}},
-            {"name": "Ganancia Real",       "type": "currency", "options": {"precision": 0, "symbol": "$"}},
-            {"name": "Teléfono",            "type": "phoneNumber"},
-            {"name": "Notas",               "type": "multilineText"},
+            {
+                "name": "Precio Compra Real",
+                "type": "currency",
+                "options": {"precision": 0, "symbol": "$"},
+            },
+            {
+                "name": "Precio Venta Real",
+                "type": "currency",
+                "options": {"precision": 0, "symbol": "$"},
+            },
+            {
+                "name": "Ganancia Real",
+                "type": "currency",
+                "options": {"precision": 0, "symbol": "$"},
+            },
+            {"name": "Teléfono", "type": "phoneNumber"},
+            {"name": "Notas", "type": "multilineText"},
         ]
 
         results = []

@@ -48,7 +48,10 @@ async def evaluate_acquisition(case: dict, api_key: str, model: str) -> dict[str
         try:
             state = CarSaleState(car_data=car_data, inspection_data=inspection_data)
             await agent(state)
-            return {"passed": False, "reason": "Expected ValueError but none was raised"}
+            return {
+                "passed": False,
+                "reason": "Expected ValueError but none was raised",
+            }
         except ValueError:
             return {"passed": True, "reason": "ValueError raised as expected"}
 
@@ -62,15 +65,21 @@ async def evaluate_acquisition(case: dict, api_key: str, model: str) -> dict[str
 
     actual_apto = result["car_data"].get("apto_venta")
     if "apto_venta" in expected and actual_apto != expected["apto_venta"]:
-        findings.append(f"apto_venta: expected {expected['apto_venta']}, got {actual_apto}")
+        findings.append(
+            f"apto_venta: expected {expected['apto_venta']}, got {actual_apto}"
+        )
         passed = False
 
     precio = result["car_data"].get("precio_mercado", 0) or 0
     if "precio_mercado_min" in expected and precio < expected["precio_mercado_min"]:
-        findings.append(f"precio_mercado {precio} < min {expected['precio_mercado_min']}")
+        findings.append(
+            f"precio_mercado {precio} < min {expected['precio_mercado_min']}"
+        )
         passed = False
     if "precio_mercado_max" in expected and precio > expected["precio_mercado_max"]:
-        findings.append(f"precio_mercado {precio} > max {expected['precio_mercado_max']}")
+        findings.append(
+            f"precio_mercado {precio} > max {expected['precio_mercado_max']}"
+        )
         passed = False
 
     if "margen_minimo" in expected:
@@ -82,7 +91,9 @@ async def evaluate_acquisition(case: dict, api_key: str, model: str) -> dict[str
     if "moneda_detectada_contains" in expected:
         moneda = result["car_data"].get("moneda_detectada", "") or ""
         if expected["moneda_detectada_contains"].lower() not in moneda.lower():
-            findings.append(f"moneda '{moneda}' no contiene '{expected['moneda_detectada_contains']}'")
+            findings.append(
+                f"moneda '{moneda}' no contiene '{expected['moneda_detectada_contains']}'"
+            )
             passed = False
 
     red_flags = [f.lower() for f in (result["car_data"].get("red_flags") or [])]
@@ -144,7 +155,9 @@ async def evaluate_publication(case: dict, api_key: str, model: str) -> dict[str
     if "precio_publicar_min" in expected:
         precio = pub.get("precio_publicar", 0)
         if precio < expected["precio_publicar_min"]:
-            findings.append(f"precio_publicar {precio} < min {expected['precio_publicar_min']}")
+            findings.append(
+                f"precio_publicar {precio} < min {expected['precio_publicar_min']}"
+            )
             passed = False
 
     return {"passed": passed, "findings": findings, "latency_s": round(latency, 2)}
@@ -165,14 +178,21 @@ async def evaluate_crm(case: dict, api_key: str, model: str) -> dict[str, Any]:
     passed = True
     expected = case["expected"]
 
-    if "lead_calificado" in expected and result.get("lead_calificado") != expected["lead_calificado"]:
-        findings.append(f"lead_calificado: expected {expected['lead_calificado']}, got {result.get('lead_calificado')}")
+    if (
+        "lead_calificado" in expected
+        and result.get("lead_calificado") != expected["lead_calificado"]
+    ):
+        findings.append(
+            f"lead_calificado: expected {expected['lead_calificado']}, got {result.get('lead_calificado')}"
+        )
         passed = False
 
     return {"passed": passed, "findings": findings, "latency_s": round(latency, 2)}
 
 
-async def evaluate_sales_closing(case: dict, api_key: str, model: str) -> dict[str, Any]:
+async def evaluate_sales_closing(
+    case: dict, api_key: str, model: str
+) -> dict[str, Any]:
     from agents.sales_closing_agent import SalesClosingAgent
     from shared.graph_state import CarSaleState
 
@@ -187,11 +207,21 @@ async def evaluate_sales_closing(case: dict, api_key: str, model: str) -> dict[s
     passed = True
     expected = case["expected"]
 
-    if "oferta_aceptable" in expected and result.get("oferta_aceptable") != expected["oferta_aceptable"]:
-        findings.append(f"oferta_aceptable: expected {expected['oferta_aceptable']}, got {result.get('oferta_aceptable')}")
+    if (
+        "oferta_aceptable" in expected
+        and result.get("oferta_aceptable") != expected["oferta_aceptable"]
+    ):
+        findings.append(
+            f"oferta_aceptable: expected {expected['oferta_aceptable']}, got {result.get('oferta_aceptable')}"
+        )
         passed = False
-    if "venta_completada" in expected and result.get("venta_completada") != expected["venta_completada"]:
-        findings.append(f"venta_completada: expected {expected['venta_completada']}, got {result.get('venta_completada')}")
+    if (
+        "venta_completada" in expected
+        and result.get("venta_completada") != expected["venta_completada"]
+    ):
+        findings.append(
+            f"venta_completada: expected {expected['venta_completada']}, got {result.get('venta_completada')}"
+        )
         passed = False
 
     return {"passed": passed, "findings": findings, "latency_s": round(latency, 2)}
@@ -205,7 +235,9 @@ EVALUATORS = {
 }
 
 
-async def run_all(api_key: str, model: str, upload_langsmith: bool = False) -> dict[str, Any]:
+async def run_all(
+    api_key: str, model: str, upload_langsmith: bool = False
+) -> dict[str, Any]:
     cases = load_golden_set()
     results: list[dict] = []
     total_passed = 0
@@ -217,7 +249,13 @@ async def run_all(api_key: str, model: str, upload_langsmith: bool = False) -> d
         evaluator = EVALUATORS.get(agent_type)
 
         if not evaluator:
-            results.append({"id": case_id, "passed": False, "reason": f"Unknown agent type: {agent_type}"})
+            results.append(
+                {
+                    "id": case_id,
+                    "passed": False,
+                    "reason": f"Unknown agent type: {agent_type}",
+                }
+            )
             continue
 
         print(f"  [{case_id}] {case['description']}...", end=" ", flush=True)
@@ -263,18 +301,20 @@ async def run_all(api_key: str, model: str, upload_langsmith: bool = False) -> d
 
     baseline = _load_baseline()
 
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print(f"  Accuracy: {total_passed}/{total} ({accuracy:.1f}%)")
     print(f"  Avg latency: {avg_latency:.2f}s")
     print(f"  Results saved: {output_path}")
     if baseline:
         delta = accuracy - baseline["accuracy_pct"]
         arrow = "▲" if delta >= 0 else "▼"
-        print(f"  vs Baseline: {baseline['accuracy_pct']}% → {accuracy:.1f}% ({arrow} {abs(delta):.1f}pp)")
+        print(
+            f"  vs Baseline: {baseline['accuracy_pct']}% → {accuracy:.1f}% ({arrow} {abs(delta):.1f}pp)"
+        )
         summary["baseline_accuracy_pct"] = baseline["accuracy_pct"]
         summary["accuracy_delta_pp"] = round(delta, 1)
         summary["regression"] = delta < 0
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
 
     if upload_langsmith:
         await _upload_to_langsmith(cases, results, summary)
@@ -296,6 +336,7 @@ def save_as_baseline(result_path: str) -> None:
     Uso: python -m evaluation.run_eval --promote evaluation/results/eval_20260713.json
     """
     import shutil
+
     src = Path(result_path)
     if not src.exists():
         print(f"ERROR: {src} not found")
@@ -368,8 +409,12 @@ def validate_golden_set() -> bool:
 
 def main():
     parser = argparse.ArgumentParser(description="Run Anymotor golden set evaluation")
-    parser.add_argument("--dry-run", action="store_true", help="Only validate golden set schema")
-    parser.add_argument("--langsmith", action="store_true", help="Upload results to LangSmith")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Only validate golden set schema"
+    )
+    parser.add_argument(
+        "--langsmith", action="store_true", help="Upload results to LangSmith"
+    )
     parser.add_argument("--model", default=None, help="Override GROQ_MODEL")
     parser.add_argument(
         "--min-accuracy",
@@ -377,7 +422,9 @@ def main():
         default=0,
         help="Minimum accuracy %% to pass (e.g. 75). Exit 1 if below.",
     )
-    parser.add_argument("--env", default="dev", help="Environment label (dev/staging/prod)")
+    parser.add_argument(
+        "--env", default="dev", help="Environment label (dev/staging/prod)"
+    )
     parser.add_argument(
         "--config",
         action="store_true",
@@ -406,8 +453,11 @@ def main():
 
     if args.config:
         from shared.config_loader import load_config, get_eval_thresholds
+
         cfg = load_config(args.env)
-        model = args.model or cfg.get("model", os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"))
+        model = args.model or cfg.get(
+            "model", os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+        )
         thresholds = get_eval_thresholds(args.env)
         min_accuracy = args.min_accuracy or thresholds.get("min_accuracy_pct", 0)
     else:
@@ -428,11 +478,15 @@ def main():
     summary = asyncio.run(run_all(api_key, model, upload_langsmith=args.langsmith))
 
     if min_accuracy > 0 and summary["accuracy_pct"] < min_accuracy:
-        print(f"\n  BLOCKED: accuracy {summary['accuracy_pct']}% < threshold {min_accuracy}%")
+        print(
+            f"\n  BLOCKED: accuracy {summary['accuracy_pct']}% < threshold {min_accuracy}%"
+        )
         sys.exit(1)
 
     if args.block_regression and summary.get("regression"):
-        print(f"\n  BLOCKED: regression detected ({summary.get('accuracy_delta_pp')}pp vs baseline)")
+        print(
+            f"\n  BLOCKED: regression detected ({summary.get('accuracy_delta_pp')}pp vs baseline)"
+        )
         sys.exit(1)
 
     sys.exit(0)

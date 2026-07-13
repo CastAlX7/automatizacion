@@ -13,11 +13,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 INCIDENTS_PATH = DATA_DIR / "incidents.json"
@@ -154,13 +151,11 @@ def detect_and_triage() -> list[dict]:
             "status": "open",
             "created_at": datetime.now(timezone.utc).isoformat(),
             "resolved_at": None,
-
             "severity": alert["severity"],
             "category": alert["category"],
             "metric": alert["metric"],
             "value": alert["value"],
             "threshold": alert["threshold"],
-
             "diagnosis_steps": runbook.get("diagnosis", []),
             "mitigation_options": runbook.get("mitigation", []),
             "action_taken": None,
@@ -175,11 +170,13 @@ def detect_and_triage() -> list[dict]:
 
     for inc in new_incidents:
         print(f"\n  [{inc['id']}] {inc['severity'].upper()} — {inc['category']}")
-        print(f"    Metric: {inc['metric']} = {inc['value']} (threshold: {inc['threshold']})")
-        print(f"    Diagnosis:")
+        print(
+            f"    Metric: {inc['metric']} = {inc['value']} (threshold: {inc['threshold']})"
+        )
+        print("    Diagnosis:")
         for step in inc["diagnosis_steps"]:
             print(f"      - {step}")
-        print(f"    Mitigation options:")
+        print("    Mitigation options:")
         for opt in inc["mitigation_options"]:
             print(f"      - {opt}")
 
@@ -196,8 +193,12 @@ def list_incidents(status: str | None = None) -> list[dict]:
         return []
 
     for inc in incidents:
-        icon = {"critical": "🔴", "warning": "🟡", "info": "🔵"}.get(inc.get("severity", ""), "⚪")
-        print(f"  {icon} [{inc['id']}] {inc['status'].upper()} — {inc['category']}: {inc['metric']}={inc['value']}")
+        icon = {"critical": "🔴", "warning": "🟡", "info": "🔵"}.get(
+            inc.get("severity", ""), "⚪"
+        )
+        print(
+            f"  {icon} [{inc['id']}] {inc['status'].upper()} — {inc['category']}: {inc['metric']}={inc['value']}"
+        )
         if inc.get("action_taken"):
             print(f"      Action: {inc['action_taken']}")
         if inc.get("root_cause"):
@@ -238,12 +239,19 @@ def main():
     parser.add_argument("--list", action="store_true", help="List open incidents")
     parser.add_argument("--list-all", action="store_true", help="List all incidents")
     parser.add_argument("--resolve", type=str, help="Resolve incident by ID")
-    parser.add_argument("--action", type=str, default="", help="Action taken (with --resolve)")
-    parser.add_argument("--cause", type=str, default="", help="Root cause (with --resolve)")
-    parser.add_argument("--lessons", type=str, default="", help="Lessons learned (with --resolve)")
+    parser.add_argument(
+        "--action", type=str, default="", help="Action taken (with --resolve)"
+    )
+    parser.add_argument(
+        "--cause", type=str, default="", help="Root cause (with --resolve)"
+    )
+    parser.add_argument(
+        "--lessons", type=str, default="", help="Lessons learned (with --resolve)"
+    )
     args = parser.parse_args()
 
     from dotenv import load_dotenv
+
     load_dotenv()
 
     if args.list:

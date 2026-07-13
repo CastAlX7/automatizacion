@@ -49,7 +49,9 @@ class CRMChatbotAgent:
         model: str = "llama-3.3-70b-versatile",
         checkpointer: BaseCheckpointSaver | None = None,
     ) -> None:
-        self.llm = ChatGroq(model=model, api_key=api_key, temperature=0.4).with_structured_output(CRMResult)
+        self.llm = ChatGroq(
+            model=model, api_key=api_key, temperature=0.4
+        ).with_structured_output(CRMResult)
         self._checkpointer_override = checkpointer
 
         builder = StateGraph(CRMTurnState)
@@ -69,7 +71,10 @@ class CRMChatbotAgent:
             },
             ensure_ascii=False,
         )
-        messages = [SystemMessage(content=SYSTEM_PROMPT), HumanMessage(content=user_content)]
+        messages = [
+            SystemMessage(content=SYSTEM_PROMPT),
+            HumanMessage(content=user_content),
+        ]
 
         result: CRMResult | None = None
         last_error: Exception | None = None

@@ -24,12 +24,23 @@ async def checkpointer():
 @pytest.mark.asyncio
 async def test_negotiation_max_attempts():
     agent = SalesClosingAgent(api_key="test")
-    agent.llm = AsyncMock(ainvoke=AsyncMock(return_value=SalesClosingResult(
-        contraoferta=12000,
-        mensaje_cliente="No",
-    )))
+    agent.llm = AsyncMock(
+        ainvoke=AsyncMock(
+            return_value=SalesClosingResult(
+                contraoferta=12000,
+                mensaje_cliente="No",
+            )
+        )
+    )
 
-    state = CarSaleState(car_data={"precio_mercado": 14000, "marca": "Toyota", "modelo": "Corolla", "año": 2019})
+    state = CarSaleState(
+        car_data={
+            "precio_mercado": 14000,
+            "marca": "Toyota",
+            "modelo": "Corolla",
+            "año": 2019,
+        }
+    )
     await agent.negotiate(offer=5000, state=state)
     await agent.negotiate(offer=6000, state=state)
     await agent.negotiate(offer=7000, state=state)
@@ -40,15 +51,25 @@ async def test_negotiation_max_attempts():
 @pytest.mark.asyncio
 async def test_car_border_score():
     agent = AcquisitionAgent(api_key="test")
-    agent.llm = AsyncMock(ainvoke=AsyncMock(return_value=AcquisitionResult(
-        apto_venta=True,
-        razon="Score en límite",
-        precio_mercado_sugerido=12000,
-        precio_negociacion_recomendado=10200,
-        observaciones="OK",
-    )))
+    agent.llm = AsyncMock(
+        ainvoke=AsyncMock(
+            return_value=AcquisitionResult(
+                apto_venta=True,
+                razon="Score en límite",
+                precio_mercado_sugerido=12000,
+                precio_negociacion_recomendado=10200,
+                observaciones="OK",
+            )
+        )
+    )
     state = CarSaleState(
-        car_data={"marca": "Honda", "modelo": "Civic", "año": 2017, "km": 98000, "color": "Azul"}
+        car_data={
+            "marca": "Honda",
+            "modelo": "Civic",
+            "año": 2017,
+            "km": 98000,
+            "color": "Azul",
+        }
     )
     result = await agent(state)
     assert result["car_data"]["apto_venta"] is True
@@ -57,7 +78,9 @@ async def test_car_border_score():
 @pytest.mark.asyncio
 async def test_invalid_car_data():
     agent = AcquisitionAgent(api_key="test")
-    agent.llm = AsyncMock(ainvoke=AsyncMock(return_value=AcquisitionResult(apto_venta=True, razon="ok")))
+    agent.llm = AsyncMock(
+        ainvoke=AsyncMock(return_value=AcquisitionResult(apto_venta=True, razon="ok"))
+    )
     state = CarSaleState(car_data={"marca": "Toyota", "modelo": "Corolla", "km": 45000})
     with pytest.raises(ValueError):
         await agent(state)
@@ -66,14 +89,20 @@ async def test_invalid_car_data():
 @pytest.mark.asyncio
 async def test_empty_client_message(checkpointer):
     agent = CRMChatbotAgent(api_key="test", checkpointer=checkpointer)
-    agent.llm = AsyncMock(ainvoke=AsyncMock(return_value=CRMResult(
-        respuesta_cliente="Hola, ¿en qué puedo ayudarte?",
-        lead_calificado=False,
-        motivo_descarte="",
-        siguiente_accion="seguir_conversacion",
-        resumen_intencion="saludo",
-    )))
-    state = CarSaleState(car_data={"marca": "Toyota", "modelo": "Corolla", "año": 2019, "km": 45000})
+    agent.llm = AsyncMock(
+        ainvoke=AsyncMock(
+            return_value=CRMResult(
+                respuesta_cliente="Hola, ¿en qué puedo ayudarte?",
+                lead_calificado=False,
+                motivo_descarte="",
+                siguiente_accion="seguir_conversacion",
+                resumen_intencion="saludo",
+            )
+        )
+    )
+    state = CarSaleState(
+        car_data={"marca": "Toyota", "modelo": "Corolla", "año": 2019, "km": 45000}
+    )
     out = await agent.handle_message("", state)
     assert "respuesta_cliente" in out
 
@@ -81,17 +110,24 @@ async def test_empty_client_message(checkpointer):
 @pytest.mark.asyncio
 async def test_full_pipeline_rejection(checkpointer):
     orch = Orchestrator(api_key="test", checkpointer=checkpointer)
-    orch.acquisition_agent.llm = AsyncMock(ainvoke=AsyncMock(return_value=AcquisitionResult(
-        apto_venta=False,
-        razon="Km excesivo",
-        precio_mercado_sugerido=8000,
-        precio_negociacion_recomendado=6800,
-        observaciones="No apto",
-    )))
+    orch.acquisition_agent.llm = AsyncMock(
+        ainvoke=AsyncMock(
+            return_value=AcquisitionResult(
+                apto_venta=False,
+                razon="Km excesivo",
+                precio_mercado_sugerido=8000,
+                precio_negociacion_recomendado=6800,
+                observaciones="No apto",
+            )
+        )
+    )
 
     summary = await orch.run_full_pipeline(
         car_data={"marca": "Ford", "modelo": "F-150", "año": 2012, "km": 215000},
-        inspection_data={"defectos_encontrados": ["Motor con ruido"], "score_fisico": 38},
+        inspection_data={
+            "defectos_encontrados": ["Motor con ruido"],
+            "score_fisico": 38,
+        },
         client_messages=["¿Está disponible?"],
         final_offer=3000,
     )

@@ -31,9 +31,9 @@ class PublicationAgent:
     """LangGraph node: genera el anuncio multi-plataforma para un auto ya aprobado."""
 
     def __init__(self, api_key: str, model: str = "llama-3.3-70b-versatile") -> None:
-        self.llm = ChatGroq(model=model, api_key=api_key, temperature=0.4).with_structured_output(
-            PublicationResult
-        )
+        self.llm = ChatGroq(
+            model=model, api_key=api_key, temperature=0.4
+        ).with_structured_output(PublicationResult)
 
     async def __call__(self, state: CarSaleState) -> dict[str, Any]:
         user_content = json.dumps(
@@ -44,7 +44,10 @@ class PublicationAgent:
             },
             ensure_ascii=False,
         )
-        messages = [SystemMessage(content=SYSTEM_PROMPT), HumanMessage(content=user_content)]
+        messages = [
+            SystemMessage(content=SYSTEM_PROMPT),
+            HumanMessage(content=user_content),
+        ]
 
         result: PublicationResult | None = None
         last_error: Exception | None = None
@@ -58,7 +61,9 @@ class PublicationAgent:
 
         if result is None:
             return {
-                "publication_data": {"error": f"No se pudo obtener respuesta estructurada de Groq: {last_error}"},
+                "publication_data": {
+                    "error": f"No se pudo obtener respuesta estructurada de Groq: {last_error}"
+                },
                 "status": "published",
                 "events": [PUBLISHED],
             }
