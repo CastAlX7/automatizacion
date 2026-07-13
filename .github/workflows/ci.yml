@@ -1,0 +1,248 @@
+name: CI/CD — Lint + Tests + Evaluación por Entorno
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  # ──────────────────────────────────────────────
+  # Gate jobs: corren en TODOS los push/PR
+  # ──────────────────────────────────────────────
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Run ruff check
+        run: ruff check .
+
+      - name: Run ruff format check
+        run: ruff format --check .
+
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: python -m pytest tests/ -v --tb=short
+
+  golden-set-validation:
+    name: Golden Set Schema
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Validate golden set schema
+        run: python -m evaluation.run_eval --dry-run
+
+  # ──────────────────────────────────────────────
+  # DESARROLLO — push a develop o PR
+  # Lee config/dev.json: modelo rápido, umbral ≥60%
+  # ──────────────────────────────────────────────
+
+  eval-dev:
+    name: "Eval: Desarrollo"
+    runs-on: ubuntu-latest
+    needs: [lint, test, golden-set-validation]
+    if: github.ref == 'refs/heads/develop' || github.event_name == 'pull_request'
+    environment: development
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run evaluation (dev — config/dev.json)
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          LANGSMITH_TRACING: true
+          LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
+          LANGSMITH_PROJECT: anymotor-dev
+          APP_ENV: dev
+        run: >
+          python -m evaluation.run_eval
+          --env dev
+          --config
+          --langsmith
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-dev-results
+          path: evaluation/results/
+          retention-days: 14
+
+  # ──────────────────────────────────────────────
+  # STAGING — push a main (pre-deploy)
+  # Lee config/staging.json: modelo prod, umbral ≥80%
+  # Bloquea si hay regresión vs baseline
+  # ──────────────────────────────────────────────
+
+  eval-staging:
+    name: "Eval: Staging"
+    runs-on: ubuntu-latest
+    needs: [lint, test, golden-set-validation]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run evaluation (staging — config/staging.json)
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          LANGSMITH_TRACING: true
+          LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
+          LANGSMITH_PROJECT: anymotor-staging
+          APP_ENV: staging
+        run: >
+          python -m evaluation.run_eval
+          --env staging
+          --config
+          --block-regression
+          --langsmith
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-staging-results
+          path: evaluation/results/
+          retention-days: 30
+
+  # ──────────────────────────────────────────────
+  # PRODUCCIÓN — solo si staging pasa
+  # Lee config/prod.json: umbral ≥90%, bloquea regresiones
+  # ──────────────────────────────────────────────
+
+  eval-prod:
+    name: "Eval: Producción"
+    runs-on: ubuntu-latest
+    needs: [eval-staging]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run evaluation (prod — config/prod.json)
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          LANGSMITH_TRACING: true
+          LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
+          LANGSMITH_PROJECT: anymotor-prod
+          APP_ENV: prod
+        run: >
+          python -m evaluation.run_eval
+          --env prod
+          --config
+          --block-regression
+          --langsmith
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-prod-results
+          path: evaluation/results/
+          retention-days: 90
+
+  # ──────────────────────────────────────────────
+  # DEPLOY — solo si eval-prod pasa
+  # Estrategia canary: EasyPanel recibe el % de tráfico
+  # ──────────────────────────────────────────────
+
+  deploy-canary:
+    name: "Deploy: Canary (10%)"
+    runs-on: ubuntu-latest
+    needs: [eval-prod]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - name: Deploy canary (10% traffic)
+        run: |
+          if [ -z "${{ secrets.EASYPANEL_WEBHOOK_URL }}" ]; then
+            echo "EASYPANEL_WEBHOOK_URL not configured — skipping deploy"
+            exit 0
+          fi
+          curl -sf -X POST "${{ secrets.EASYPANEL_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "ref": "${{ github.sha }}",
+              "environment": "production",
+              "strategy": "canary",
+              "traffic_pct": 10
+            }' \
+            && echo "Canary deploy triggered (10% traffic)" \
+            || (echo "Deploy webhook failed" && exit 1)
+
+  deploy-promote:
+    name: "Deploy: Promote to 100%"
+    runs-on: ubuntu-latest
+    needs: [deploy-canary]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - name: Promote canary to full traffic
+        run: |
+          if [ -z "${{ secrets.EASYPANEL_WEBHOOK_URL }}" ]; then
+            echo "EASYPANEL_WEBHOOK_URL not configured — skipping promote"
+            exit 0
+          fi
+          curl -sf -X POST "${{ secrets.EASYPANEL_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "ref": "${{ github.sha }}",
+              "environment": "production",
+              "strategy": "promote",
+              "traffic_pct": 100
+            }' \
+            && echo "Full deploy promoted (100% traffic)" \
+            || (echo "Promote webhook failed" && exit 1)

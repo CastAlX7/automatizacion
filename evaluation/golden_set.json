@@ -1,0 +1,283 @@
+[
+  {
+    "id": "GS-01",
+    "description": "Toyota Yaris 2018 buen estado — debe aprobar",
+    "agent": "acquisition",
+    "input": {
+      "car_data": {
+        "marca": "Toyota",
+        "modelo": "Yaris",
+        "año": 2018,
+        "km": 52000,
+        "color": "Blanco",
+        "precio_dueño": 10500,
+        "currency": "USD",
+        "price_usd": 10500,
+        "raw_data": "Toyota Yaris 2018, único dueño, full equipo, AC, airbags, blanco perla. 52mil km. Mantenimiento en concesionario. SOAT vigente."
+      },
+      "inspection_data": {
+        "defectos": [],
+        "score_fisico": 88
+      }
+    },
+    "expected": {
+      "apto_venta": true,
+      "precio_mercado_min": 13000,
+      "precio_mercado_max": 17500,
+      "should_have_green_flags": ["único dueño", "bajo kilometraje"],
+      "should_not_have_red_flags": ["GNV", "chocado", "papeles en trámite"]
+    }
+  },
+  {
+    "id": "GS-02",
+    "description": "Ford F-150 2012 km excesivo — debe rechazar",
+    "agent": "acquisition",
+    "input": {
+      "car_data": {
+        "marca": "Ford",
+        "modelo": "F-150",
+        "año": 2012,
+        "km": 215000,
+        "color": "Gris",
+        "precio_dueño": 8000,
+        "currency": "USD",
+        "price_usd": 8000,
+        "raw_data": "Ford F-150 2012, motor reparado, 215mil km, transmisión desgastada. Papeles al día."
+      },
+      "inspection_data": {
+        "defectos": ["Motor con ruido", "Transmisión desgastada", "Luces opacas"],
+        "score_fisico": 38
+      }
+    },
+    "expected": {
+      "apto_venta": false,
+      "should_have_red_flags": ["motor reparado", "kilometraje"],
+      "should_not_have_red_flags": []
+    }
+  },
+  {
+    "id": "GS-03",
+    "description": "Hyundai Accent 2016 en soles — debe aprobar y detectar moneda PEN",
+    "agent": "acquisition",
+    "input": {
+      "car_data": {
+        "marca": "Hyundai",
+        "modelo": "Accent",
+        "año": 2016,
+        "km": 78000,
+        "color": "Gris plata",
+        "precio_dueño": 37500,
+        "currency": "PEN",
+        "price_usd": 10000,
+        "raw_data": "Hyundai Accent 2016, 78mil km, gris plata, full equipo, único dueño. S/37,500. Lima."
+      },
+      "inspection_data": {
+        "defectos": ["Rayón leve en puerta"],
+        "score_fisico": 79
+      }
+    },
+    "expected": {
+      "apto_venta": true,
+      "moneda_detectada_contains": "PEN",
+      "precio_mercado_min": 9000,
+      "precio_mercado_max": 14000
+    }
+  },
+  {
+    "id": "GS-04",
+    "description": "Auto con GNV y papeles en trámite — debe rechazar",
+    "agent": "acquisition",
+    "input": {
+      "car_data": {
+        "marca": "Chevrolet",
+        "modelo": "Aveo",
+        "año": 2013,
+        "km": 165000,
+        "color": "Rojo",
+        "precio_dueño": 4500,
+        "currency": "USD",
+        "price_usd": 4500,
+        "raw_data": "Chevrolet Aveo 2013, GNV instalado, papeles en trámite. 165mil km. 3 dueños anteriores. $4,500."
+      },
+      "inspection_data": {
+        "defectos": ["GNV sin certificación", "Pintura deteriorada"],
+        "score_fisico": 42
+      }
+    },
+    "expected": {
+      "apto_venta": false,
+      "should_have_red_flags": ["GNV", "papeles en trámite"]
+    }
+  },
+  {
+    "id": "GS-05",
+    "description": "Kia Sportage 2019 buen margen — debe aprobar",
+    "agent": "acquisition",
+    "input": {
+      "car_data": {
+        "marca": "Kia",
+        "modelo": "Sportage",
+        "año": 2019,
+        "km": 61000,
+        "color": "Negro",
+        "precio_dueño": 14000,
+        "currency": "USD",
+        "price_usd": 14000,
+        "raw_data": "Kia Sportage 2019, 61mil km, negro, AC, ABS, sensores de estacionamiento. Único dueño, SOAT y revisión técnica vigentes."
+      },
+      "inspection_data": {
+        "defectos": [],
+        "score_fisico": 91
+      }
+    },
+    "expected": {
+      "apto_venta": true,
+      "precio_mercado_min": 15000,
+      "precio_mercado_max": 22000,
+      "margen_minimo": 15
+    }
+  },
+  {
+    "id": "GS-06",
+    "description": "BMW europeo — debe rechazar o advertir",
+    "agent": "acquisition",
+    "input": {
+      "car_data": {
+        "marca": "BMW",
+        "modelo": "320i",
+        "año": 2015,
+        "km": 120000,
+        "color": "Azul",
+        "precio_dueño": 13000,
+        "currency": "USD",
+        "price_usd": 13000,
+        "raw_data": "BMW 320i 2015, 120mil km, azul, automático, full equipo. Único dueño. $13,000."
+      },
+      "inspection_data": {
+        "defectos": ["Desgaste en frenos"],
+        "score_fisico": 68
+      }
+    },
+    "expected": {
+      "apto_venta": false,
+      "should_have_red_flags": ["europeo"]
+    }
+  },
+  {
+    "id": "GS-07",
+    "description": "Publicación de Toyota Corolla aprobado — debe generar 3 descripciones",
+    "agent": "publication",
+    "input": {
+      "car_data": {
+        "marca": "Toyota",
+        "modelo": "Corolla",
+        "año": 2019,
+        "km": 45000,
+        "color": "Blanco",
+        "precio_mercado": 16000,
+        "precio_pub_usd": 15500,
+        "apto_venta": true
+      },
+      "inspection_data": {
+        "resultado_inspeccion": "Buen estado general"
+      }
+    },
+    "expected": {
+      "has_facebook": true,
+      "has_mercadolibre": true,
+      "has_instagram": true,
+      "titulo_not_empty": true,
+      "precio_publicar_min": 10000
+    }
+  },
+  {
+    "id": "GS-08",
+    "description": "CRM — lead calificado pregunta precio final",
+    "agent": "crm",
+    "input": {
+      "message": "Me interesa mucho el auto, ¿cuál es el precio final? Puedo ir a verlo mañana.",
+      "car_data": {
+        "marca": "Toyota",
+        "modelo": "Yaris",
+        "año": 2018,
+        "km": 52000,
+        "precio_mercado": 14000
+      }
+    },
+    "expected": {
+      "lead_calificado": true
+    }
+  },
+  {
+    "id": "GS-09",
+    "description": "CRM — lead no calificado, solo curiosidad",
+    "agent": "crm",
+    "input": {
+      "message": "Solo preguntaba por curiosidad, no tengo plata ahora, quizás el próximo año.",
+      "car_data": {
+        "marca": "Toyota",
+        "modelo": "Yaris",
+        "año": 2018,
+        "km": 52000,
+        "precio_mercado": 14000
+      }
+    },
+    "expected": {
+      "lead_calificado": false
+    }
+  },
+  {
+    "id": "GS-10",
+    "description": "Cierre — oferta aceptable (>= 85% mercado)",
+    "agent": "sales_closing",
+    "input": {
+      "offer": 12500,
+      "car_data": {
+        "marca": "Toyota",
+        "modelo": "Corolla",
+        "año": 2019,
+        "km": 45000,
+        "precio_mercado": 14000
+      }
+    },
+    "expected": {
+      "oferta_aceptable": true,
+      "venta_completada": true
+    }
+  },
+  {
+    "id": "GS-11",
+    "description": "Cierre — oferta inaceptable (< 85% mercado)",
+    "agent": "sales_closing",
+    "input": {
+      "offer": 8000,
+      "car_data": {
+        "marca": "Toyota",
+        "modelo": "Corolla",
+        "año": 2019,
+        "km": 45000,
+        "precio_mercado": 14000
+      }
+    },
+    "expected": {
+      "oferta_aceptable": false,
+      "venta_completada": false
+    }
+  },
+  {
+    "id": "GS-12",
+    "description": "Auto sin año en datos — debe lanzar ValueError",
+    "agent": "acquisition",
+    "input": {
+      "car_data": {
+        "marca": "Toyota",
+        "modelo": "Corolla",
+        "km": 45000
+      },
+      "inspection_data": {}
+    },
+    "expected": {
+      "raises": "ValueError"
+    }
+  }
+]

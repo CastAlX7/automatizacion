@@ -1,0 +1,41 @@
+[
+  {
+    "id": "6f3b7d2a-0f71-4f1a-9f0e-0e5d09cdb0a1",
+    "fecha_inspeccion": "2026-05-20",
+    "inspector_nombre": "Carlos Rivas",
+    "marca": "Toyota",
+    "modelo": "Corolla",
+    "año": 2019,
+    "km": 45000,
+    "color": "Blanco",
+    "precio_dueño": 12000,
+    "defectos": ["Rayón leve en puerta trasera izquierda"],
+    "score_fisico": 82
+  },
+  {
+    "id": "2b9e3d1c-0e6f-4d45-9f2e-ea7f0f2d54e3",
+    "fecha_inspeccion": "2026-05-20",
+    "inspector_nombre": "María Paredes",
+    "marca": "Ford",
+    "modelo": "F-150",
+    "año": 2012,
+    "km": 215000,
+    "color": "Gris",
+    "precio_dueño": 8000,
+    "defectos": ["Motor con ruido", "Transmisión desgastada", "Luces delanteras opacas"],
+    "score_fisico": 38
+  },
+  {
+    "id": "9c7ddc5a-8b2a-4d34-ae8a-4d0d2c04d8b9",
+    "fecha_inspeccion": "2026-05-20",
+    "inspector_nombre": "Jorge Salazar",
+    "marca": "Honda",
+    "modelo": "Civic",
+    "año": 2017,
+    "km": 98000,
+    "color": "Azul",
+    "precio_dueño": 9500,
+    "defectos": ["Parabrisas con grieta pequeña", "AC no enfría bien"],
+    "score_fisico": 61
+  }
+]

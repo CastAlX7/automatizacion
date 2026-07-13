@@ -1,0 +1,12 @@
+.env
+__pycache__/
+*.pyc
+.streamlit/secrets.toml
+seen_listings.json
+data/checkpoints.sqlite
+.pytest_cache/
+contracts/*.pdf
+venv/
+evaluation/results/
+monitoring/data/*.jsonl
+monitoring/data/incidents.json

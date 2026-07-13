@@ -1,0 +1,37 @@
+{
+  "environment": "development",
+  "model": "llama-3.1-8b-instant",
+  "temperature": {
+    "acquisition": 0.15,
+    "publication": 0.4,
+    "crm": 0.4,
+    "sales_closing": 0.3
+  },
+  "evaluation": {
+    "min_accuracy_pct": 60,
+    "max_latency_p95_s": 10,
+    "max_cost_per_query_usd": 0.05
+  },
+  "langsmith": {
+    "project": "anymotor-dev",
+    "tracing": true
+  },
+  "rate_limits": {
+    "max_requests_per_minute": 100,
+    "max_tokens_per_session": 50000
+  },
+  "monitoring": {
+    "alerts_enabled": false,
+    "max_error_rate_pct": 20,
+    "checkpoint_db_max_mb": 1000,
+    "injection_alert_threshold": 10
+  },
+  "feature_flags": {
+    "enable_whatsapp_alerts": false,
+    "enable_telegram_alerts": true,
+    "enable_airtable_sync": false,
+    "enable_facebook_scraper": true,
+    "enable_contract_pdf": true,
+    "release_strategy": "direct"
+  }
+}
