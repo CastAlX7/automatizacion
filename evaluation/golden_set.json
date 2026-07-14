@@ -160,7 +160,7 @@
     },
     "expected": {
       "apto_venta": false,
-      "should_have_red_flags": ["europeo"]
+      "should_have_red_flags": ["europe"]
     }
   },
   {
