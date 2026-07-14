@@ -107,15 +107,22 @@ class SalesClosingAgent:
                 resumen.fecha or datetime.now(timezone.utc).date().isoformat()
             )
 
-            pdf_path = generate_contract_pdf(
-                output_path=f"contracts/{state.car_id}.pdf",
-                contract=resumen.model_dump(),
-            )
+            try:
+                pdf_path = generate_contract_pdf(
+                    output_path=f"contracts/{state.car_id}.pdf",
+                    contract=resumen.model_dump(),
+                )
+                contrato_generado = True
+            except Exception:
+                # La venta ya se cerró — un fallo generando el PDF no debe
+                # tumbar el cierre, solo queda registrado como pendiente.
+                pdf_path = None
+                contrato_generado = False
 
             state.sale_data = {
                 "precio_final": precio_final,
                 "forma_pago": resumen.forma_pago,
-                "contrato_generado": True,
+                "contrato_generado": contrato_generado,
                 "venta_completada": True,
                 "contrato_pdf": pdf_path,
             }
