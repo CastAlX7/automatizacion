@@ -196,3 +196,52 @@ class CostTracker:
 
     def cost_since(self, hours: int = 24) -> float:
         return round(sum(e.get("cost_usd", 0) for e in self.load_history(hours)), 6)
+
+
+_tracker: CostTracker | None = None
+
+
+def get_tracker() -> CostTracker:
+    """Instancia compartida por proceso — todos los agentes escriben al mismo log."""
+    global _tracker
+    if _tracker is None:
+        _tracker = CostTracker()
+    return _tracker
+
+
+async def track_llm_call(
+    agent: str,
+    llm: Any,
+    messages: Any,
+    model: str,
+    session_id: str | None = None,
+):
+    """Invoca un chat model de LangChain registrando tokens/costo/latencia en CostTracker.
+
+    Usa UsageMetadataCallbackHandler para capturar el uso real reportado por Groq,
+    incluso a través de .with_structured_output() (el callback ve la respuesta cruda
+    del LLM antes de que se parsee al modelo Pydantic).
+    """
+    from langchain_core.callbacks import UsageMetadataCallbackHandler
+
+    cb = UsageMetadataCallbackHandler()
+    start = time.perf_counter()
+    result = await llm.ainvoke(messages, config={"callbacks": [cb]})
+    latency = time.perf_counter() - start
+
+    usage = cb.usage_metadata.get(model, {})
+    tokens_in = usage.get("input_tokens", 0)
+    tokens_out = usage.get("output_tokens", 0)
+    if tokens_in == 0 and tokens_out == 0:
+        # Sin uso real reportado (p. ej. un LLM mockeado en tests) — no registrar ruido.
+        return result
+
+    get_tracker().record(
+        agent=agent,
+        tokens_in=tokens_in,
+        tokens_out=tokens_out,
+        latency_s=latency,
+        model=model,
+        session_id=session_id,
+    )
+    return result

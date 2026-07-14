@@ -314,12 +314,13 @@ with st.sidebar:
     )
 
 # ─── Tabs ──────────────────────────────────────────────────────────────────────
-tab_search, tab_manual, tab_db, tab_dash, tab_cfg = st.tabs(
+tab_search, tab_manual, tab_db, tab_dash, tab_mon, tab_cfg = st.tabs(
     [
         "🔍 Buscar Ofertas",
         "➕ Agregar Manual",
         "📊 Mis Oportunidades",
         "📈 Dashboard",
+        "🩺 Monitoreo",
         "⚙️ Configuración",
     ]
 )
@@ -1282,3 +1283,148 @@ with tab_cfg:
                     st.error("❌ No se pudo enviar. Verifica el número y la API key.")
             else:
                 st.error("Completa el número y la API key antes de probar.")
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB — MONITOREO (costos, latencia, incidentes, LangSmith)
+# ══════════════════════════════════════════════════════════════════════════════
+with tab_mon:
+    st.subheader("🩺 Monitoreo")
+
+    langsmith_on = os.getenv("LANGSMITH_TRACING", "").lower() == "true" and bool(
+        os.getenv("LANGSMITH_API_KEY")
+    )
+    ls_project = os.getenv("LANGSMITH_PROJECT", "")
+    if langsmith_on:
+        st.success(
+            f"🟢 Trazas detalladas activas en LangSmith — proyecto `{ls_project}`"
+        )
+        st.link_button("Abrir dashboard de LangSmith ↗", "https://smith.langchain.com")
+    else:
+        st.warning(
+            "LangSmith no está configurado. Agrega `LANGSMITH_TRACING=true`, "
+            "`LANGSMITH_API_KEY` y `LANGSMITH_PROJECT` en tu `.env` para ver trazas "
+            "detalladas (prompt, respuesta, errores) por cada llamada."
+        )
+
+    st.divider()
+
+    period_hours = st.selectbox(
+        "Periodo",
+        options=[24, 168, 720],
+        format_func=lambda h: {
+            24: "Últimas 24h",
+            168: "Última semana",
+            720: "Último mes",
+        }[h],
+        key="mon_period",
+    )
+
+    from monitoring.finops import generate_report
+
+    report = generate_report(hours=period_hours, with_recommendations=True)
+
+    if report.get("total_entries", 0) == 0:
+        st.info(
+            f"Sin datos de uso en las {'últimas 24h' if period_hours == 24 else 'últimas ' + str(period_hours) + 'h'}. "
+            "Usa la app o el bot de Telegram para generar actividad — cada llamada al "
+            "LLM se registra automáticamente."
+        )
+    else:
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Llamadas", report["total_entries"])
+        m2.metric("Costo total", f"${report['total_cost_usd']:.4f}")
+        m3.metric("Tokens", f"{report['total_tokens']:,}")
+        m4.metric("Proyección mensual", f"${report['monthly_projection_usd']:.2f}")
+
+        by_agent = report.get("by_agent", {})
+        if by_agent:
+            st.markdown("#### Por agente")
+            agent_df = pd.DataFrame(
+                [
+                    {
+                        "Agente": agent,
+                        "Llamadas": d["calls"],
+                        "Costo USD": d["cost_usd"],
+                        "% del costo": d["cost_pct"],
+                        "Latencia p95 (s)": d["latency_p95_s"],
+                    }
+                    for agent, d in by_agent.items()
+                ]
+            )
+            fig = px.bar(
+                agent_df,
+                x="Agente",
+                y="Costo USD",
+                color="Agente",
+                text="Llamadas",
+                title="Costo por agente",
+            )
+            fig.update_layout(showlegend=False, height=320)
+            st.plotly_chart(fig, width="stretch")
+            st.dataframe(agent_df, hide_index=True, width="stretch")
+
+        by_model = report.get("by_model", {})
+        if by_model:
+            st.markdown("#### Por modelo")
+            model_df = pd.DataFrame(
+                [
+                    {
+                        "Modelo": model,
+                        "Llamadas": d["calls"],
+                        "Costo USD": d["cost_usd"],
+                    }
+                    for model, d in by_model.items()
+                ]
+            )
+            st.dataframe(model_df, hide_index=True, width="stretch")
+
+        if report.get("recommendations"):
+            st.markdown("#### 💡 Recomendaciones")
+            for rec in report["recommendations"]:
+                st.info(rec)
+
+    st.divider()
+    st.markdown("#### 🚨 Incidentes")
+
+    from monitoring.incident_manager import _load_incidents, detect_and_triage
+
+    inc_col1, inc_col2 = st.columns([1, 3])
+    if inc_col1.button("🔎 Detectar incidentes ahora"):
+        with st.spinner("Revisando umbrales..."):
+            new_incidents = detect_and_triage()
+        if new_incidents:
+            st.toast(f"⚠️ {len(new_incidents)} incidente(s) nuevo(s) detectado(s).")
+        else:
+            st.toast("✅ Sin incidentes nuevos — todo dentro de umbrales.")
+
+    incidents = _load_incidents()
+    if not incidents:
+        st.caption("Sin incidentes registrados.")
+    else:
+        icon = {"critical": "🔴", "warning": "🟡", "info": "🔵"}
+        for inc in sorted(
+            incidents, key=lambda i: i.get("created_at", ""), reverse=True
+        ):
+            status_label = "abierto" if inc["status"] == "open" else "resuelto"
+            with st.expander(
+                f"{icon.get(inc.get('severity'), '⚪')} [{inc['id']}] {inc['category']} "
+                f"— {inc['metric']}={inc['value']} ({status_label})"
+            ):
+                st.write(f"**Umbral excedido:** {inc['threshold']}")
+                st.write(f"**Creado:** {inc['created_at']}")
+                if inc.get("diagnosis_steps"):
+                    st.markdown("**Pasos de diagnóstico:**")
+                    for step in inc["diagnosis_steps"]:
+                        st.markdown(f"- {step}")
+                if inc.get("mitigation_options"):
+                    st.markdown("**Opciones de mitigación:**")
+                    for opt in inc["mitigation_options"]:
+                        st.markdown(f"- {opt}")
+                if inc["status"] == "open":
+                    if st.button("Marcar como resuelto", key=f"resolve_{inc['id']}"):
+                        from monitoring.incident_manager import resolve_incident
+
+                        resolve_incident(
+                            inc["id"], action_taken="Resuelto desde la app"
+                        )
+                        st.rerun()

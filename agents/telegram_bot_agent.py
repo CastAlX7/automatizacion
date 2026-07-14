@@ -19,6 +19,7 @@ try:
     sys.stdout.reconfigure(encoding="utf-8")
 except (AttributeError, ValueError):
     pass
+from langchain_core.callbacks import UsageMetadataCallbackHandler
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.tools import tool
 from langchain_groq import ChatGroq
@@ -26,6 +27,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from pydantic import BaseModel, Field
 
 from agents.orchestrator import Orchestrator
+from monitoring.cost_tracker import get_tracker
 from shared.checkpointing import checkpointer_scope
 from tools.airtable_tool import AirtableTool
 from tools.seen_listings import is_seen, mark_seen
@@ -284,8 +286,14 @@ class TelegramBotAgent:
 
     async def _run_agent(self, chat_id: int, username: str, text: str) -> str:
         tools = self._build_tools(chat_id)
-        config = {"configurable": {"thread_id": str(chat_id)}, "recursion_limit": 20}
+        usage_cb = UsageMetadataCallbackHandler()
+        config = {
+            "configurable": {"thread_id": str(chat_id)},
+            "recursion_limit": 20,
+            "callbacks": [usage_cb],
+        }
 
+        start = time.perf_counter()
         try:
             if self._checkpointer_override is not None:
                 agent = create_agent(
@@ -311,6 +319,17 @@ class TelegramBotAgent:
         except Exception as e:
             _log(f"ERR  [{username}] error del agente: {e}")
             return f"⚠️ Error al conectar con la IA: {e}"
+        finally:
+            latency = time.perf_counter() - start
+            for model_name, usage in usage_cb.usage_metadata.items():
+                get_tracker().record(
+                    agent="telegram_bot",
+                    tokens_in=usage.get("input_tokens", 0),
+                    tokens_out=usage.get("output_tokens", 0),
+                    latency_s=latency,
+                    model=model_name,
+                    session_id=str(chat_id),
+                )
 
         for message in reversed(result["messages"]):
             if isinstance(message, AIMessage) and message.content:

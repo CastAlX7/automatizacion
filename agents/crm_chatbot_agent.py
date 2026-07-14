@@ -10,6 +10,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, StateGraph
 from pydantic import BaseModel, Field
 
+from monitoring.cost_tracker import track_llm_call
 from shared.checkpointing import checkpointer_scope
 from shared.graph_state import CarSaleState
 
@@ -49,6 +50,7 @@ class CRMChatbotAgent:
         model: str = "llama-3.3-70b-versatile",
         checkpointer: BaseCheckpointSaver | None = None,
     ) -> None:
+        self.model = model
         self.llm = ChatGroq(
             model=model, api_key=api_key, temperature=0.4
         ).with_structured_output(CRMResult)
@@ -80,7 +82,13 @@ class CRMChatbotAgent:
         last_error: Exception | None = None
         for _ in range(3):
             try:
-                result = await self.llm.ainvoke(messages)
+                result = await track_llm_call(
+                    agent="crm",
+                    llm=self.llm,
+                    messages=messages,
+                    model=self.model,
+                    session_id=state.car_id,
+                )
                 break
             except Exception as e:
                 last_error = e

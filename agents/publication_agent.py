@@ -7,6 +7,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_groq import ChatGroq
 from pydantic import BaseModel, Field
 
+from monitoring.cost_tracker import track_llm_call
 from shared.event_bus import PUBLISHED
 from shared.graph_state import CarSaleState
 from tools.listing_publisher import build_mock_urls
@@ -31,6 +32,7 @@ class PublicationAgent:
     """LangGraph node: genera el anuncio multi-plataforma para un auto ya aprobado."""
 
     def __init__(self, api_key: str, model: str = "llama-3.3-70b-versatile") -> None:
+        self.model = model
         self.llm = ChatGroq(
             model=model, api_key=api_key, temperature=0.4
         ).with_structured_output(PublicationResult)
@@ -53,7 +55,13 @@ class PublicationAgent:
         last_error: Exception | None = None
         for _ in range(3):
             try:
-                result = await self.llm.ainvoke(messages)
+                result = await track_llm_call(
+                    agent="publication",
+                    llm=self.llm,
+                    messages=messages,
+                    model=self.model,
+                    session_id=state.car_id,
+                )
                 break
             except Exception as e:
                 last_error = e

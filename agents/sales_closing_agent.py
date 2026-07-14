@@ -8,6 +8,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_groq import ChatGroq
 from pydantic import BaseModel
 
+from monitoring.cost_tracker import track_llm_call
 from shared.event_bus import NEGOTIATION_FAILED, SALE_COMPLETED
 from shared.graph_state import CarSaleState
 from tools.document_generator import generate_contract_pdf
@@ -40,6 +41,7 @@ class SalesClosingAgent:
     """LangGraph node: evalúa la oferta contra la regla de negocio y cierra o contraoferta."""
 
     def __init__(self, api_key: str, model: str = "llama-3.3-70b-versatile") -> None:
+        self.model = model
         self.llm = ChatGroq(
             model=model, api_key=api_key, temperature=0.3
         ).with_structured_output(SalesClosingResult)
@@ -72,7 +74,13 @@ class SalesClosingAgent:
         last_error: Exception | None = None
         for _ in range(3):
             try:
-                result = await self.llm.ainvoke(messages)
+                result = await track_llm_call(
+                    agent="sales_closing",
+                    llm=self.llm,
+                    messages=messages,
+                    model=self.model,
+                    session_id=state.car_id,
+                )
                 break
             except Exception as e:
                 last_error = e

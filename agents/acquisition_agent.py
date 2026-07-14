@@ -8,6 +8,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_groq import ChatGroq
 from pydantic import BaseModel, Field
 
+from monitoring.cost_tracker import track_llm_call
 from shared.event_bus import CAR_ACQUIRED, CAR_REJECTED
 from shared.graph_state import CarSaleState
 
@@ -155,6 +156,7 @@ class AcquisitionAgent:
     """LangGraph node: analiza un auto candidato y decide si es apto para reventa."""
 
     def __init__(self, api_key: str, model: str = "llama-3.3-70b-versatile") -> None:
+        self.model = model
         self.llm = ChatGroq(
             model=model, api_key=api_key, temperature=0.15
         ).with_structured_output(AcquisitionResult)
@@ -196,9 +198,16 @@ class AcquisitionAgent:
         result: AcquisitionResult | None = None
         last_error: Exception | None = None
         llm = self.llm_vision if image_url else self.llm
+        call_model = VISION_MODEL if image_url else self.model
         for _ in range(3):
             try:
-                result = await llm.ainvoke(messages)
+                result = await track_llm_call(
+                    agent="acquisition",
+                    llm=llm,
+                    messages=messages,
+                    model=call_model,
+                    session_id=state.car_id,
+                )
                 break
             except Exception as e:
                 last_error = e
