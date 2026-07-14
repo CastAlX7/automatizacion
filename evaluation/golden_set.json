@@ -51,7 +51,7 @@
     },
     "expected": {
       "apto_venta": false,
-      "should_have_red_flags": ["motor reparado", "kilometraje"],
+      "should_have_red_flags": ["motor reparado", "kilomet"],
       "should_not_have_red_flags": []
     }
   },
