@@ -617,7 +617,6 @@ class FacebookScraper:
 
                     # ── Extract price and title from card ─────────────────────
                     price = ""
-                    title = ""
                     image_url = ""
 
                     img_el = el.locator("img")
@@ -627,8 +626,22 @@ class FacebookScraper:
                     for line in text_lines:
                         if re.search(r"[\$S/]|\d{3,}", line) and not price:
                             price = line
-                        elif len(line) > 5 and not title and line != price:
-                            title = line
+                            break
+
+                    # En las tarjetas de /search/ (búsqueda por modelo), Facebook
+                    # antepone la ubicación ("Ate, LM") al título real — a
+                    # diferencia de /vehicles, donde el título va primero. Se
+                    # descartan líneas con forma de ubicación y se elige la más
+                    # larga entre las candidatas (el título suele ser la línea
+                    # más descriptiva de la tarjeta).
+                    title_candidates = [
+                        ln
+                        for ln in text_lines
+                        if ln != price
+                        and len(ln) > 5
+                        and not re.match(r"^[\w\sÀ-ÿ.\-]+,\s*[A-Z]{2,3}$", ln)
+                    ]
+                    title = max(title_candidates, key=len) if title_candidates else ""
 
                     if not (title and price):
                         continue
